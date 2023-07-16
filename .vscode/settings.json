@@ -2,37 +2,69 @@
   "editor.insertSpaces": true,
   "editor.tabSize": 4,
   "files.trimTrailingWhitespace": true,
+  "editor.rulers": [100, 120],
+
+  "files.associations": {
+    "*.yaml": "yaml"
+  },
 
   "[python]": {
     "editor.wordBasedSuggestions": false,
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
   },
-  "python.formatting.provider": "black",
+  "python.analysis.include": ["./src", "./scripts", "./tests"],
+
+  "python.formatting.provider": "none",
   "python.formatting.blackArgs": [
     "--line-length=110",
     "--config=${workspaceFolder}/pyproject.toml"
   ],
-  "python.linting.enabled": true,
+  "python.linting.enabled": false,
   "python.linting.pylintEnabled": false,
   "python.linting.flake8Enabled": true,
   "python.linting.flake8Args": ["--config=${workspaceFolder}/setup.cfg"],
 
   "[json]": {
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
     "editor.formatOnSave": true,
-    "editor.tabSize": 2
+    "editor.formatOnSaveMode": "file"
   },
 
   "[toml]": {
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
     "editor.formatOnSave": true,
-    "editor.tabSize": 2
+    "editor.formatOnSaveMode": "file",
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.rulers": [80, 100]
   },
+  "evenBetterToml.formatter.columnWidth": 88,
+
+  "[yaml]": {
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2,
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file"
+  },
+  "yaml.format.bracketSpacing": true,
+  "yaml.format.proseWrap": "preserve",
+  "yaml.format.singleQuote": false,
+  "yaml.format.printWidth": 110,
 
   "[markdown]": {
     "files.trimTrailingWhitespace": false
   },
 
-  "[makefile]": {
-    "editor.insertSpaces": false,
-    "editor.tabSize": 8
-  }
+  "css.lint.validProperties": ["dock", "content-align", "content-justify"],
+  "[css]": {
+    "editor.formatOnSave": true
+  },
+
+  "remote.autoForwardPorts": false,
+  "remote.autoForwardPortsSource": "process"
 }
