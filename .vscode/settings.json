@@ -1,0 +1,38 @@
+{
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "files.trimTrailingWhitespace": true,
+
+  "[python]": {
+    "editor.wordBasedSuggestions": false,
+    "editor.formatOnSave": true
+  },
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": [
+    "--line-length=110",
+    "--config=${workspaceFolder}/pyproject.toml"
+  ],
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "python.linting.flake8Args": ["--config=${workspaceFolder}/setup.cfg"],
+
+  "[json]": {
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+
+  "[toml]": {
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+
+  "[markdown]": {
+    "files.trimTrailingWhitespace": false
+  },
+
+  "[makefile]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 8
+  }
+}
