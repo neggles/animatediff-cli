@@ -1,4 +1,4 @@
-from animatediff.app import app
+from animatediff.cli import cli
 
 if __name__ == "__main__":
-    app()
+    cli()

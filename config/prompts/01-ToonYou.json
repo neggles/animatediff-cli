@@ -1,0 +1,21 @@
+{
+  "name": "ToonYou",
+  "base": "",
+  "path": "models/sd/toonyou_beta3.safetensors",
+  "motion_module": "models/motion-module/mm_sd_v15.ckpt",
+  "seed": [
+    10788741199826055000, 6520604954829637000, 6519455744612556000,
+    16372571278361864000
+  ],
+  "steps": 25,
+  "guidance_scale": 7.5,
+  "prompt": [
+    "best quality, masterpiece, 1girl, looking at viewer, blurry background, upper body, contemporary, dress",
+    "1girl, solo, masterpiece, best quality, cherry blossoms, hanami, pink flower, white flower, spring season, wisteria, petals, flower, plum blossoms, outdoors, falling petals, white hair, black eyes,",
+    "1girl, solo, best quality, masterpiece, looking at viewer, purple hair, orange hair, gradient hair, blurry background, upper body, dress, flower print, spaghetti strap, bare shoulders",
+    "1girl, solo, best quality, masterpiece, cloudy sky, dandelion, contrapposto, alternate hairstyle"
+  ],
+  "n_prompt": [
+    "worst quality, low quality, cropped, lowres, text, jpeg artifacts, multiple view, bad artist, blurry"
+  ]
+}
