@@ -16,6 +16,7 @@ cli: typer.Typer = typer.Typer(
     context_settings=dict(help_option_names=["-h", "--help"]),
     rich_markup_mode="rich",
     no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
 )
 
 data_dir = get_dir("data")
@@ -124,7 +125,7 @@ def generate(
     # get a timestamp for the output directory
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     # make the output directory
-    save_dir = out_dir.joinpath(f"{time_str}-{model_name_or_path.stem}")
+    save_dir = out_dir.joinpath(f"{time_str}-{model_config.name.lower()}")
     save_dir.mkdir(parents=True, exist_ok=True)
     console.log(f"Saving output to {save_dir}")
 
