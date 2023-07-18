@@ -2,15 +2,24 @@ from os import PathLike
 from pathlib import Path
 from typing import Union
 
-import imageio
+import imageio.v3 as iio
 import numpy as np
 import torch
-import torchvision
 from diffusers import DDIMScheduler
 from einops import rearrange
+from torch import Tensor
+from torchvision.utils import make_grid, save_image
 from tqdm import tqdm
 
 from animatediff.pipelines.pipeline_animation import AnimationPipeline
+
+
+def save_video_frames(video: Tensor, frames_dir: PathLike):
+    frames_dir = Path(frames_dir)
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    frames = rearrange(video, "b c t h w -> t b c h w")
+    for idx, frame in enumerate(tqdm(frames, desc=f"Saving frames to {frames_dir.stem}")):
+        save_image(frame, frames_dir.joinpath(f"{idx:03d}.png"))
 
 
 def save_videos_grid(videos: torch.Tensor, save_path: PathLike, rescale=False, n_rows=6, fps=8):
@@ -19,7 +28,7 @@ def save_videos_grid(videos: torch.Tensor, save_path: PathLike, rescale=False, n
     videos = rearrange(videos, "b c t h w -> t b c h w")
     outputs = []
     for x in videos:
-        x = torchvision.utils.make_grid(x, nrow=n_rows)
+        x = make_grid(x, nrow=n_rows)
         x = x.transpose(0, 1).transpose(1, 2).squeeze(-1)
         if rescale:
             x = (x + 1.0) / 2.0  # -1,1 -> 0,1
@@ -27,7 +36,14 @@ def save_videos_grid(videos: torch.Tensor, save_path: PathLike, rescale=False, n
         outputs.append(x)
 
     save_path.parent.mkdir(parents=True, exist_ok=True)
-    imageio.mimsave(save_path, outputs, duration=(1 / fps * 1000))
+    iio.imwrite(
+        uri=save_path,
+        image=outputs,
+        plugin="pillow",
+        duration=(1 / fps * 1000),
+        loop=0,
+        save_all=True,
+    )
 
 
 # DDIM Inversion

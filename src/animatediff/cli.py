@@ -5,13 +5,12 @@ from typing import Annotated, Optional
 
 import torch
 import typer
-from huggingface_hub import snapshot_download
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import create_pipeline, run_inference
 from animatediff.settings import InferenceConfig, ModelConfig, get_infer_config, get_model_config
 from animatediff.utils.model import checkpoint_to_pipeline, get_model
-from animatediff.utils.util import save_videos_grid
+from animatediff.utils.util import save_video_frames, save_videos_grid
 
 cli: typer.Typer = typer.Typer(
     context_settings=dict(help_option_names=["-h", "--help"]),
@@ -83,6 +82,10 @@ def generate(
         str,
         typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)"),
     ] = "cuda",
+    save_frames: Annotated[
+        bool,
+        typer.Option("--save-frames", "-s", is_flag=True, help="Save individual frames as PNGs"),
+    ] = False,
     version: Annotated[
         Optional[bool],
         typer.Option(
@@ -155,6 +158,9 @@ def generate(
             out_dir=save_dir,
         )
         outputs.append(output)
+        torch.cuda.empty_cache()
+        if save_frames:
+            save_video_frames(output, save_dir.joinpath(f"{idx}"))
 
     console.log("Generation complete, saving merged output...")
     merged_output = torch.concat(outputs, dim=0)
