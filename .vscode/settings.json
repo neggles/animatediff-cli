@@ -18,11 +18,6 @@
   },
   "python.analysis.include": ["./src", "./scripts", "./tests"],
 
-  "python.formatting.provider": "none",
-  "python.formatting.blackArgs": [
-    "--line-length=110",
-    "--config=${workspaceFolder}/pyproject.toml"
-  ],
   "python.linting.enabled": false,
   "python.linting.pylintEnabled": false,
   "python.linting.flake8Enabled": true,
