@@ -70,7 +70,8 @@ def checkpoint_to_pipeline(
 
 
 def get_checkpoint_weights(checkpoint: Path):
-    temp_pipeline: StableDiffusionPipeline = checkpoint_to_pipeline(checkpoint, save=False)
+    temp_pipeline: StableDiffusionPipeline
+    temp_pipeline, _ = checkpoint_to_pipeline(checkpoint, save=False)
     unet_state_dict = temp_pipeline.unet.state_dict()
     tenc_state_dict = temp_pipeline.text_encoder.state_dict()
     vae_state_dict = temp_pipeline.vae.state_dict()
