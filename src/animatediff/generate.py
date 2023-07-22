@@ -1,4 +1,5 @@
 import logging
+import re
 from os import PathLike
 from pathlib import Path
 from typing import Union
@@ -19,6 +20,8 @@ from animatediff.utils.util import save_videos_grid
 logger = logging.getLogger(__name__)
 data_dir = get_dir("data")
 default_base_path = data_dir.joinpath("models/huggingface/stable-diffusion-v1-5")
+
+re_clean_prompt = re.compile(r"[^\w\-, ]")
 
 
 def create_pipeline(
@@ -132,8 +135,10 @@ def run_inference(
     logger.info("Generation complete, saving...")
 
     # Trim and clean up the prompt for filename use
-    prompt_tags = prompt.replace("/", "").split(" ")
-    prompt_str = "-".join((prompt_tags[:10]))
+    prompt_tags = [re_clean_prompt.sub("", tag).strip().replace(" ", "-") for tag in prompt.split(",")]
+    prompt_str = "_".join((prompt_tags[:10]))
+
+    # generate the output filename and save the video
     out_file = out_dir.joinpath(f"{idx:03d}_{seed}_{prompt_str}.gif")
     save_videos_grid(pipeline_output["videos"], out_file)
 

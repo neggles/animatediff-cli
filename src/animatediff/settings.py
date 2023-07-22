@@ -3,7 +3,7 @@ import logging
 from functools import lru_cache
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from pydantic import BaseConfig, BaseSettings, Field, validator
 from pydantic.env_settings import (
@@ -97,17 +97,24 @@ def get_infer_config(
 
 class ModelConfig(BaseSettings):
     name: str = Field(...)  # Config name, not actually used for much of anything
-    base: str = Field(...)
-    path: Path = Field(...)  # Path to the model checkpoint, relative to cwd()
-    motion_module: Path = Field(...)  # Paths to the motion modules, relative to cwd()
-    seed: list[int] = Field([])  # Seeds for the random number generators
+    base: Optional[Path] = Field(None)  # Path to base checkpoint (if using a LoRA)
+    path: Path = Field(...)  # Path to the model or LoRA checkpoint
+    motion_module: Path = Field(...)  # Path to the motion module
+    seed: list[int] = Field([])  # Seed(s) for the random number generators
     steps: int = 25  # Number of inference steps to run
     guidance_scale: float = 7.5  # CFG scale to use
-    prompt: list[str] = Field([])  # Prompts to use
-    n_prompt: list[str] = Field([])  # Anti-prompts to use
+    prompt: list[str] = Field([])  # Prompt(s) to use
+    n_prompt: list[str] = Field([])  # Anti-prompt(s) to use
 
     class Config(JsonConfig):
         json_config_path: Path
+
+    @property
+    def save_name(self):
+        if self.base is not None and str(self.base) != ".":
+            return f"{self.name.lower()}-{self.path.stem.lower()}-{self.base.stem.lower()}"
+        else:
+            return f"{self.name.lower()}-{self.path.stem.lower()}"
 
 
 @lru_cache(maxsize=2)

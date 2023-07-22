@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 
 import torch
 import typer
+from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import create_pipeline, run_inference
@@ -29,7 +30,15 @@ data_dir = get_dir("data")
 checkpoint_dir = data_dir.joinpath("models/sd")
 pipeline_dir = data_dir.joinpath("models/huggingface")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="%H:%M:%S",
+    handlers=[
+        RichHandler(console=console, rich_tracebacks=True),
+    ],
+    force=True,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -133,7 +142,7 @@ def generate(
     # get a timestamp for the output directory
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     # make the output directory
-    save_dir = out_dir.joinpath(f"{time_str}-{model_config.name.lower()}")
+    save_dir = out_dir.joinpath(f"{time_str}-{model_config.save_name}")
     save_dir.mkdir(parents=True, exist_ok=True)
     console.log(f"Saving output to {save_dir}")
 
