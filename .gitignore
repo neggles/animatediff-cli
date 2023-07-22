@@ -236,3 +236,6 @@ src/animatediff/_version.py
 /misc/
 /temp/
 
+# envrc
+.env*
+!.envrc.example
