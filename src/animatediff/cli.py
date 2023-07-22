@@ -240,4 +240,4 @@ def merge(
     ] = None,
 ):
     """Convert a StableDiffusion checkpoint into an AnimationPipeline"""
-    pass
+    raise NotImplementedError("Sorry, haven't implemented this yet!")
