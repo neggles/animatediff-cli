@@ -130,21 +130,6 @@ def generate(
             get_model(model_name_or_path, model_save_dir)
         model_name_or_path = model_save_dir
 
-    # if we have a checkpoint, convert it to HF automagically
-    elif model_name_or_path.is_file() and model_name_or_path.suffix in CKPT_EXTENSIONS:
-        console.log(f"Loading model from checkpoint: {model_name_or_path}")
-        # check if we've already converted this model
-        model_dir = pipeline_dir.joinpath(model_name_or_path.stem)
-        if model_dir.joinpath("model_index.json").exists():
-            # we have, so just use that
-            console.log("Found converted model, skipping conversion")
-            model_name_or_path = model_dir
-        else:
-            # we haven't, so convert it
-            console.log("Converting checkpoint to HuggingFace pipeline...")
-            pipeline, model_name_or_path = checkpoint_to_pipeline(model_name_or_path)
-            del pipeline  # yeah we're about to recreate it, but shhh
-
     # get a timestamp for the output directory
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     # make the output directory
@@ -250,3 +235,18 @@ def merge(
 ):
     """Convert a StableDiffusion checkpoint into an AnimationPipeline"""
     raise NotImplementedError("Sorry, haven't implemented this yet!")
+
+    # if we have a checkpoint, convert it to HF automagically
+    if checkpoint.is_file() and checkpoint.suffix in CKPT_EXTENSIONS:
+        console.log(f"Loading model from checkpoint: {checkpoint}")
+        # check if we've already converted this model
+        model_dir = pipeline_dir.joinpath(checkpoint.stem)
+        if model_dir.joinpath("model_index.json").exists():
+            # we have, so just use that
+            console.log("Found converted model in {model_dir}, will not convert")
+            console.log("Delete the output directory to re-run conversion.")
+        else:
+            # we haven't, so convert it
+            console.log("Converting checkpoint to HuggingFace pipeline...")
+            pipeline, model_dir = checkpoint_to_pipeline(checkpoint)
+    console.log("Done!")
