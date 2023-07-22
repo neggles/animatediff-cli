@@ -89,9 +89,9 @@ def generate(
         str,
         typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)"),
     ] = "cuda",
-    save_frames: Annotated[
+    no_frames: Annotated[
         bool,
-        typer.Option("--save-frames", "-s", is_flag=True, help="Save individual frames as PNGs"),
+        typer.Option("--no-frames", "-N", is_flag=True, help="Don't save frames, only the animation"),
     ] = False,
     version: Annotated[
         Optional[bool],
@@ -183,7 +183,7 @@ def generate(
         )
         outputs.append(output)
         torch.cuda.empty_cache()
-        if save_frames:
+        if no_frames is not True:
             save_video_frames(output, save_dir.joinpath(f"{idx}"))
 
     console.log("Generation complete, saving merged output...")
