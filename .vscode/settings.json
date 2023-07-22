@@ -1,65 +1,75 @@
 {
-  "editor.insertSpaces": true,
-  "editor.tabSize": 4,
-  "files.trimTrailingWhitespace": true,
-  "editor.rulers": [100, 120],
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "files.trimTrailingWhitespace": true,
+    "editor.rulers": [100, 120],
 
-  "files.associations": {
-    "*.yaml": "yaml"
-  },
+    "files.associations": {
+        "*.yaml": "yaml"
+    },
 
-  "[python]": {
-    "editor.wordBasedSuggestions": false,
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "ms-python.black-formatter",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": true
-    }
-  },
-  "python.analysis.include": ["./src", "./scripts", "./tests"],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/__pycache__": true
+    },
 
-  "python.linting.enabled": false,
-  "python.linting.pylintEnabled": false,
-  "python.linting.flake8Enabled": true,
-  "python.linting.flake8Args": ["--config=${workspaceFolder}/setup.cfg"],
+    "[python]": {
+        "editor.wordBasedSuggestions": false,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        }
+    },
+    "python.analysis.include": ["./src", "./scripts", "./tests"],
 
-  "[json]": {
-    "editor.tabSize": 2,
-    "editor.detectIndentation": false,
-    "editor.formatOnSave": true,
-    "editor.formatOnSaveMode": "file"
-  },
+    "python.linting.enabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": ["--config=${workspaceFolder}/setup.cfg"],
 
-  "[toml]": {
-    "editor.tabSize": 2,
-    "editor.detectIndentation": false,
-    "editor.formatOnSave": true,
-    "editor.formatOnSaveMode": "file",
-    "editor.defaultFormatter": "tamasfe.even-better-toml",
-    "editor.rulers": [80, 100]
-  },
-  "evenBetterToml.formatter.columnWidth": 88,
+    "[json]": {
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
 
-  "[yaml]": {
-    "editor.detectIndentation": false,
-    "editor.tabSize": 2,
-    "editor.formatOnSave": true,
-    "editor.formatOnSaveMode": "file"
-  },
-  "yaml.format.bracketSpacing": true,
-  "yaml.format.proseWrap": "preserve",
-  "yaml.format.singleQuote": false,
-  "yaml.format.printWidth": 110,
+    "[toml]": {
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.defaultFormatter": "tamasfe.even-better-toml",
+        "editor.rulers": [80, 100]
+    },
+    "evenBetterToml.formatter.columnWidth": 88,
 
-  "[markdown]": {
-    "files.trimTrailingWhitespace": false
-  },
+    "[yaml]": {
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2,
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "yaml.format.bracketSpacing": true,
+    "yaml.format.proseWrap": "preserve",
+    "yaml.format.singleQuote": false,
+    "yaml.format.printWidth": 110,
 
-  "css.lint.validProperties": ["dock", "content-align", "content-justify"],
-  "[css]": {
-    "editor.formatOnSave": true
-  },
+    "[markdown]": {
+        "files.trimTrailingWhitespace": false
+    },
 
-  "remote.autoForwardPorts": false,
-  "remote.autoForwardPortsSource": "process"
+    "css.lint.validProperties": ["dock", "content-align", "content-justify"],
+    "[css]": {
+        "editor.formatOnSave": true
+    },
+
+    "remote.autoForwardPorts": false,
+    "remote.autoForwardPortsSource": "process"
 }
