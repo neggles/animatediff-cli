@@ -211,7 +211,7 @@ def convert(
 ):
     """Convert a StableDiffusion checkpoint into a Diffusers pipeline"""
     console.log(f"Converting checkpoint: {checkpoint}")
-    pipeline, pipeline_dir = checkpoint_to_pipeline(checkpoint, target_dir=out_dir)
+    _, pipeline_dir = checkpoint_to_pipeline(checkpoint, target_dir=out_dir)
     console.log(f"Converted to HuggingFace pipeline at {pipeline_dir}")
 
 
