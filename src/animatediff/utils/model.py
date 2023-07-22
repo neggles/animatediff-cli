@@ -53,9 +53,11 @@ def checkpoint_to_pipeline(
     target_dir: Optional[Path] = None,
     save: bool = True,
 ) -> StableDiffusionPipeline:
+    logger.info(f"Converting checkpoint: {checkpoint}")
     if target_dir is None:
         target_dir = pipeline_dir.joinpath(checkpoint.stem)
-    logger.info(f"Converting checkpoint: {checkpoint}")
+        logger.info(f"Using default output directory: {target_dir}")
+
     pipeline = StableDiffusionPipeline.from_single_file(
         pretrained_model_link_or_path=str(checkpoint.absolute()),
         local_files_only=True,
@@ -64,7 +66,7 @@ def checkpoint_to_pipeline(
     target_dir.mkdir(parents=True, exist_ok=True)
 
     pipeline.save_pretrained(target_dir, safe_serialization=True)
-    return pipeline
+    return pipeline, target_dir
 
 
 def get_checkpoint_weights(checkpoint: Path):

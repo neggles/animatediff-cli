@@ -18,6 +18,8 @@ from animatediff import get_dir
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+CKPT_EXTENSIONS = [".pt", ".ckpt", ".pth", ".safetensors"]
+
 
 class JsonSettingsSource:
     __slots__ = ["json_config_path"]

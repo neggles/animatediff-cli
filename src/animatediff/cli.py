@@ -8,7 +8,13 @@ import typer
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import create_pipeline, run_inference
-from animatediff.settings import InferenceConfig, ModelConfig, get_infer_config, get_model_config
+from animatediff.settings import (
+    CKPT_EXTENSIONS,
+    InferenceConfig,
+    ModelConfig,
+    get_infer_config,
+    get_model_config,
+)
 from animatediff.utils.model import checkpoint_to_pipeline, get_model
 from animatediff.utils.util import save_video_frames, save_videos_grid
 
@@ -113,6 +119,8 @@ def generate(
 
     console.log(f"Using model: {model_name_or_path}")
     model_is_repo_id = False if model_name_or_path.exists() else True
+
+    # if we have a HF repo ID, download it
     if model_is_repo_id:
         model_save_dir = get_dir("data/models/huggingface").joinpath(str(model_name_or_path).split("/")[-1])
         if model_save_dir.exists():
@@ -121,6 +129,12 @@ def generate(
             console.log(f"Downloading model from huggingface repo: {model_name_or_path}")
             get_model(model_name_or_path, model_save_dir)
         model_name_or_path = model_save_dir
+
+    # if we have a checkpoint, convert it to HF automagically
+    elif model_name_or_path.is_file() and model_name_or_path.suffix in CKPT_EXTENSIONS:
+        console.log(f"Loading model from checkpoint: {model_name_or_path}")
+        pipeline, pipeline_dir = checkpoint_to_pipeline(model_name_or_path)
+        model_name_or_path = pipeline_dir
 
     # get a timestamp for the output directory
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -197,11 +211,8 @@ def convert(
 ):
     """Convert a StableDiffusion checkpoint into a Diffusers pipeline"""
     console.log(f"Converting checkpoint: {checkpoint}")
-    if out_dir is None:
-        out_dir = pipeline_dir.joinpath(checkpoint.stem)
-        console.log(f"Using default output directory: {out_dir}")
-    pipeline = checkpoint_to_pipeline(checkpoint, target_dir=out_dir)
-    console.log(f"Converted pipeline: {pipeline}")
+    pipeline, pipeline_dir = checkpoint_to_pipeline(checkpoint, target_dir=out_dir)
+    console.log(f"Converted to HuggingFace pipeline at {pipeline_dir}")
 
 
 @cli.command()
