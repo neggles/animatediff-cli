@@ -136,7 +136,7 @@ def run_inference(
 
     # Trim and clean up the prompt for filename use
     prompt_tags = [re_clean_prompt.sub("", tag).strip().replace(" ", "-") for tag in prompt.split(",")]
-    prompt_str = "_".join((prompt_tags[:10]))
+    prompt_str = "_".join((prompt_tags[:6]))
 
     # generate the output filename and save the video
     out_file = out_dir.joinpath(f"{idx:03d}_{seed}_{prompt_str}.gif")
