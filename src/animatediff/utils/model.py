@@ -36,7 +36,7 @@ class DownloadTqdm(tqdm):
 def get_hf_pipeline(repo_id: Path, target_dir: Path):
     target_dir.mkdir(exist_ok=True, parents=True)
     pipeline = StableDiffusionPipeline.from_pretrained(
-        repo_id=str(repo_id),
+        pretrained_model_name_or_path=str(repo_id).lstrip("./"),
         cache_dir=HF_HUB_CACHE,
         resume_download=True,
     )
