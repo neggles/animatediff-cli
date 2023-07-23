@@ -8,6 +8,7 @@ import torch
 import typer
 from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
 from rich.logging import RichHandler
+from tqdm import TqdmExperimentalWarning
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import create_pipeline, run_inference
@@ -45,6 +46,8 @@ logger = logging.getLogger(__name__)
 
 # shhh torch, don't worry about it it's fine
 warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
+# you too tqdm
+warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 
 def version_callback(value: bool):
