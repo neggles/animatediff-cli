@@ -481,6 +481,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             "CrossAttnUpBlock3D",
             "CrossAttnUpBlock3D",
         ]
+        unet_config["mid_block_type"] = "UNetMidBlock3DCrossAttn"
 
         model: nn.Module = cls.from_config(unet_config, **unet_additional_kwargs)
 

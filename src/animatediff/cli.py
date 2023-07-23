@@ -161,16 +161,17 @@ def generate(
     tenc_dtype = torch.float16
 
     logger.info(f"Using model: {model_name_or_path}")
-    model_is_repo_id = False if model_name_or_path.exists() else True
 
+    model_save_dir = get_dir("data/models/huggingface").joinpath(str(model_name_or_path).split("/")[-1])
+    model_is_repo_id = False if model_name_or_path.joinpath("model_index.json").exists() else True
     # if we have a HF repo ID, download it
     if model_is_repo_id:
-        model_save_dir = get_dir("data/models/huggingface").joinpath(str(model_name_or_path).split("/")[-1])
-        if model_save_dir.exists():
-            logger.info(f"Model already downloaded to: {model_save_dir}")
+        logger.info("Base model is a HuggingFace repo ID")
+        if model_save_dir.joinpath("model_index.json").exists():
+            logger.info(f"Base model already downloaded to: {model_save_dir}")
         else:
-            logger.info(f"Downloading model from huggingface repo: {model_name_or_path}")
-            get_hf_pipeline(model_name_or_path, model_save_dir)
+            logger.info(f"Downloading from {model_name_or_path}")
+            get_hf_pipeline(model_name_or_path, model_save_dir.absolute())
         model_name_or_path = model_save_dir
 
     # get a timestamp for the output directory
