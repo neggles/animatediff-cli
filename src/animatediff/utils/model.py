@@ -4,7 +4,7 @@ from typing import Optional
 
 from diffusers import StableDiffusionPipeline
 from huggingface_hub import snapshot_download
-from tqdm import tqdm
+from tqdm.rich import tqdm
 
 from animatediff import HF_HUB_CACHE, get_dir
 

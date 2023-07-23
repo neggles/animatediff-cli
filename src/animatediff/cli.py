@@ -1,10 +1,12 @@
 import logging
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
 
 import torch
 import typer
+from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
 from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
@@ -17,7 +19,7 @@ from animatediff.settings import (
     get_model_config,
 )
 from animatediff.utils.model import checkpoint_to_pipeline, get_model
-from animatediff.utils.util import save_video_frames, save_videos_grid
+from animatediff.utils.util import device_info_str, save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
     context_settings=dict(help_option_names=["-h", "--help"]),
@@ -40,6 +42,9 @@ logging.basicConfig(
     force=True,
 )
 logger = logging.getLogger(__name__)
+
+# shhh torch, don't worry about it it's fine
+warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
 
 
 def version_callback(value: bool):
@@ -98,9 +103,17 @@ def generate(
         str,
         typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)"),
     ] = "cuda",
+    force_half_vae: Annotated[
+        bool,
+        typer.Option("--half-vae", is_flag=True, help="Force VAE to use fp16 if bf16 is not supported"),
+    ] = False,
     no_frames: Annotated[
         bool,
         typer.Option("--no-frames", "-N", is_flag=True, help="Don't save frames, only the animation"),
+    ] = False,
+    save_merged: Annotated[
+        bool,
+        typer.Option("--save-merged", "-m", is_flag=True, help="Save a merged animation of all prompts"),
     ] = False,
     version: Annotated[
         Optional[bool],
@@ -119,23 +132,41 @@ def generate(
     """
 
     config_path = config_path.absolute()
-    console.log(f"Using generation config: {config_path}")
+    logger.info(f"Using generation config: {config_path}")
     model_config: ModelConfig = get_model_config(config_path)
     infer_config: InferenceConfig = get_infer_config()
 
-    dtype = torch.float16
-    device = torch.device(device)
+    # bluh bluh safety checker
+    set_diffusers_verbosity_error()
 
-    console.log(f"Using model: {model_name_or_path}")
+    device = torch.device(device)
+    device_info = torch.cuda.get_device_properties(device)
+
+    logger.info(device_info_str(device_info))
+    has_bf16 = torch.cuda.is_bf16_supported()
+    if has_bf16:
+        logger.info("Device supports bfloat16, will run VAE in bf16")
+        vae_dtype = torch.bfloat16
+    elif force_half_vae:
+        logger.warn("bfloat16 not supported, but VAE forced to fp16!")
+        vae_dtype = torch.float16
+    else:
+        logger.info("bfloat16 not supported, will run VAE in fp32")
+        vae_dtype = torch.float32
+
+    unet_dtype = torch.float16
+    tenc_dtype = torch.float16
+
+    logger.info(f"Using model: {model_name_or_path}")
     model_is_repo_id = False if model_name_or_path.exists() else True
 
     # if we have a HF repo ID, download it
     if model_is_repo_id:
         model_save_dir = get_dir("data/models/huggingface").joinpath(str(model_name_or_path).split("/")[-1])
         if model_save_dir.exists():
-            console.log(f"Model already downloaded to: {model_save_dir}")
+            logger.info(f"Model already downloaded to: {model_save_dir}")
         else:
-            console.log(f"Downloading model from huggingface repo: {model_name_or_path}")
+            logger.info(f"Downloading model from huggingface repo: {model_name_or_path}")
             get_model(model_name_or_path, model_save_dir)
         model_name_or_path = model_save_dir
 
@@ -144,22 +175,24 @@ def generate(
     # make the output directory
     save_dir = out_dir.joinpath(f"{time_str}-{model_config.save_name}")
     save_dir.mkdir(parents=True, exist_ok=True)
-    console.log(f"Saving output to {save_dir}")
+    logger.info(f"Saving output to {save_dir}")
 
     # beware
-    console.log("Creating pipeline...")
+    logger.info("Creating pipeline...")
     pipeline = create_pipeline(
         base_model=model_name_or_path,
         model_config=model_config,
         infer_config=infer_config,
     )
-    pipeline = pipeline.to(torch_device=device, torch_dtype=dtype)
+    pipeline.unet = pipeline.unet.to(device=device, dtype=unet_dtype)
+    pipeline.text_encoder = pipeline.text_encoder.to(device=device, dtype=tenc_dtype)
+    pipeline.vae = pipeline.vae.to(device=device, dtype=vae_dtype)
 
     num_prompts = len(model_config.prompt)
-    console.log(f"Generating {num_prompts} animations")
+    logger.info(f"Generating {num_prompts} animations")
     outputs = []
     for idx, prompt in enumerate(model_config.prompt):
-        console.log(f"Running prompt {idx + 1}/{num_prompts}")
+        logger.info(f"Running prompt {idx + 1}/{num_prompts}")
         n_prompt = model_config.n_prompt[idx] if len(model_config.n_prompt) > 1 else model_config.n_prompt[0]
         seed = seed = model_config.seed[idx] if len(model_config.seed) > 1 else model_config.seed[0]
         output = run_inference(
@@ -178,13 +211,15 @@ def generate(
         outputs.append(output)
         torch.cuda.empty_cache()
         if no_frames is not True:
-            save_video_frames(output, save_dir.joinpath(f"{idx}"))
+            save_frames(output, save_dir.joinpath(f"{idx}"))
 
-    console.log("Generation complete, saving merged output...")
-    merged_output = torch.concat(outputs, dim=0)
-    save_videos_grid(merged_output, save_dir.joinpath("final.gif"), n_rows=num_prompts)
+    logger.info("Generation complete!")
+    if save_merged:
+        logger.info("Saving merged output video...")
+        merged_output = torch.concat(outputs, dim=0)
+        save_video(merged_output, save_dir.joinpath("final.gif"), n_rows=num_prompts)
 
-    console.log("done!")
+    logger.info("Done, exiting...")
     exit(0)
 
 
@@ -213,9 +248,9 @@ def convert(
     ] = None,
 ):
     """Convert a StableDiffusion checkpoint into a Diffusers pipeline"""
-    console.log(f"Converting checkpoint: {checkpoint}")
+    logger.info(f"Converting checkpoint: {checkpoint}")
     _, pipeline_dir = checkpoint_to_pipeline(checkpoint, target_dir=out_dir)
-    console.log(f"Converted to HuggingFace pipeline at {pipeline_dir}")
+    logger.info(f"Converted to HuggingFace pipeline at {pipeline_dir}")
 
 
 @cli.command()
@@ -247,15 +282,15 @@ def merge(
 
     # if we have a checkpoint, convert it to HF automagically
     if checkpoint.is_file() and checkpoint.suffix in CKPT_EXTENSIONS:
-        console.log(f"Loading model from checkpoint: {checkpoint}")
+        logger.info(f"Loading model from checkpoint: {checkpoint}")
         # check if we've already converted this model
         model_dir = pipeline_dir.joinpath(checkpoint.stem)
         if model_dir.joinpath("model_index.json").exists():
             # we have, so just use that
-            console.log("Found converted model in {model_dir}, will not convert")
-            console.log("Delete the output directory to re-run conversion.")
+            logger.info("Found converted model in {model_dir}, will not convert")
+            logger.info("Delete the output directory to re-run conversion.")
         else:
             # we haven't, so convert it
-            console.log("Converting checkpoint to HuggingFace pipeline...")
+            logger.info("Converting checkpoint to HuggingFace pipeline...")
             pipeline, model_dir = checkpoint_to_pipeline(checkpoint)
-    console.log("Done!")
+    logger.info("Done!")

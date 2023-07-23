@@ -7,6 +7,7 @@ from typing import Callable, List, Optional, Union
 import numpy as np
 import torch
 from diffusers.configuration_utils import FrozenDict
+from diffusers.image_processor import VaeImageProcessor
 from diffusers.models import AutoencoderKL
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.schedulers import (
@@ -20,7 +21,7 @@ from diffusers.schedulers import (
 from diffusers.utils import BaseOutput, deprecate, is_accelerate_available, logging
 from einops import rearrange
 from packaging import version
-from tqdm import tqdm
+from tqdm.rich import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
 from animatediff.models.unet import UNet3DConditionModel
@@ -114,6 +115,7 @@ class AnimationPipeline(DiffusionPipeline):
             scheduler=scheduler,
         )
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+        self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
 
     def enable_vae_slicing(self):
         self.vae.enable_slicing()
@@ -254,12 +256,12 @@ class AnimationPipeline(DiffusionPipeline):
 
     def decode_latents(self, latents):
         video_length = latents.shape[2]
-        latents = 1 / 0.18215 * latents
+        latents = 1 / self.vae.config.scaling_factor * latents
         latents = rearrange(latents, "b c f h w -> (b f) c h w")
         # video = self.vae.decode(latents).sample
         video = []
         for frame_idx in tqdm(range(latents.shape[0])):
-            video.append(self.vae.decode(latents[frame_idx : frame_idx + 1]).sample)
+            video.append(self.vae.decode(latents[frame_idx : frame_idx + 1].to(self.vae.dtype)).sample)
         video = torch.cat(video)
         video = rearrange(video, "(b f) c h w -> b c f h w", f=video_length)
         video = (video / 2 + 0.5).clamp(0, 1)
@@ -430,13 +432,6 @@ class AnimationPipeline(DiffusionPipeline):
                 noise_pred = self.unet(
                     latent_model_input, t, encoder_hidden_states=text_embeddings
                 ).sample.to(dtype=latents_dtype)
-                # noise_pred = []
-                # import pdb
-                # pdb.set_trace()
-                # for batch_idx in range(latent_model_input.shape[0]):
-                #     noise_pred_single = self.unet(latent_model_input[batch_idx:batch_idx+1], t, encoder_hidden_states=text_embeddings[batch_idx:batch_idx+1]).sample.to(dtype=latents_dtype)
-                #     noise_pred.append(noise_pred_single)
-                # noise_pred = torch.cat(noise_pred)
 
                 # perform guidance
                 if do_classifier_free_guidance:
@@ -454,7 +449,10 @@ class AnimationPipeline(DiffusionPipeline):
                     if callback is not None and i % callback_steps == 0:
                         callback(i, t, latents)
 
-        # Post-processing
+        # Return latents if requested (this will never be a dict)
+        if output_type == "latent":
+            return latents
+
         video = self.decode_latents(latents)
 
         # Convert to tensor

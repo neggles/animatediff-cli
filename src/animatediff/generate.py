@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Union
 
 import torch
-from diffusers import AutoencoderKL, DDIMScheduler, StableDiffusionPipeline
+from diffusers import AutoencoderKL, StableDiffusionPipeline
+from diffusers.schedulers import DPMSolverMultistepScheduler
 from diffusers.utils.import_utils import is_xformers_available
 from transformers import CLIPTextModel, CLIPTokenizer
 
@@ -15,7 +16,7 @@ from animatediff.pipelines.pipeline_animation import AnimationPipeline
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import get_checkpoint_weights
-from animatediff.utils.util import save_videos_grid
+from animatediff.utils.util import save_video
 
 logger = logging.getLogger(__name__)
 data_dir = get_dir("data")
@@ -47,13 +48,16 @@ def create_pipeline(
         subfolder="unet",
         unet_additional_kwargs=infer_config.unet_additional_kwargs,
     )
+
+    # set up scheduler
     sched_kwargs = infer_config.noise_scheduler_kwargs
-    scheduler = DDIMScheduler(**sched_kwargs)
+    sched_kwargs.update({"algorithm_type": "dpmsolver++", "use_karras_sigmas": True})
+    scheduler = DPMSolverMultistepScheduler.from_config(sched_kwargs)
 
     # Load the checkpoint weights into the pipeline
     if model_config.path is not None:
         model_path = data_dir.joinpath(model_config.path)
-        logger.warning(f"Loading weights from {model_path}")
+        logger.info(f"Loading weights from {model_path}")
         if model_path.is_file():
             logger.info("Loading from single checkpoint file")
             unet_state_dict, tenc_state_dict, vae_state_dict = get_checkpoint_weights(model_path)
@@ -114,6 +118,7 @@ def run_inference(
     duration: int = 16,
     idx: int = 0,
     out_dir: PathLike = ...,
+    return_dict: bool = False,
 ):
     out_dir = Path(out_dir)  # ensure out_dir is a Path
 
@@ -131,6 +136,7 @@ def run_inference(
         width=width,
         height=height,
         video_length=duration,
+        return_dict=return_dict,
     )
     logger.info("Generation complete, saving...")
 
@@ -140,7 +146,10 @@ def run_inference(
 
     # generate the output filename and save the video
     out_file = out_dir.joinpath(f"{idx:03d}_{seed}_{prompt_str}.gif")
-    save_videos_grid(pipeline_output["videos"], out_file)
+    if return_dict is True:
+        save_video(pipeline_output["videos"], out_file)
+    else:
+        save_video(pipeline_output, out_file)
 
     logger.info(f"Saved sample to {out_file}")
-    return pipeline_output["videos"]
+    return pipeline_output
