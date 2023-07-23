@@ -33,10 +33,20 @@ class DownloadTqdm(tqdm):
         super().__init__(*args, **kwargs)
 
 
+def get_hf_pipeline(repo_id: Path, target_dir: Path):
+    target_dir.mkdir(exist_ok=True, parents=True)
+    pipeline = StableDiffusionPipeline.from_pretrained(
+        repo_id=str(repo_id),
+        cache_dir=HF_HUB_CACHE,
+        resume_download=True,
+    )
+    pipeline.save_pretrained(target_dir, safe_serialization=True)
+
+
 def get_model(repo_id: Path, target_dir: Path):
     target_dir.mkdir(exist_ok=True, parents=True)
     snapshot_download(
-        repo_id=repo_id,
+        repo_id=str(repo_id),
         revision="main",
         local_dir=target_dir,
         local_dir_use_symlinks=False,

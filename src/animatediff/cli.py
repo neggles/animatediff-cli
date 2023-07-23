@@ -19,7 +19,7 @@ from animatediff.settings import (
     get_infer_config,
     get_model_config,
 )
-from animatediff.utils.model import checkpoint_to_pipeline, get_model
+from animatediff.utils.model import checkpoint_to_pipeline, get_hf_pipeline
 from animatediff.utils.util import device_info_str, save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
@@ -170,7 +170,7 @@ def generate(
             logger.info(f"Model already downloaded to: {model_save_dir}")
         else:
             logger.info(f"Downloading model from huggingface repo: {model_name_or_path}")
-            get_model(model_name_or_path, model_save_dir)
+            get_hf_pipeline(model_name_or_path, model_save_dir)
         model_name_or_path = model_save_dir
 
     # get a timestamp for the output directory
