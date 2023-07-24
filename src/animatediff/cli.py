@@ -192,6 +192,11 @@ def generate(
     pipeline.text_encoder = pipeline.text_encoder.to(device=device, dtype=tenc_dtype)
     pipeline.vae = pipeline.vae.to(device=device, dtype=vae_dtype)
 
+    # save config to output directory
+    logger.info("Saving prompt config to output dir...")
+    save_config_path = save_dir.joinpath("prompt.json")
+    save_config_path.write_text(model_config.json(), encoding="utf-8")
+
     num_prompts = len(model_config.prompt)
     logger.info(f"Generating {num_prompts} animations")
     outputs = []
