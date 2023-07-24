@@ -209,7 +209,7 @@ def generate(
         # TODO: Move gif saving out of run_inference...
         if seed == -1:
             seed = torch.seed()
-            logger.info(f"Using seed {seed}")
+        logger.info(f"Using seed {seed}")
 
         output = run_inference(
             pipeline=pipeline,

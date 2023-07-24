@@ -126,7 +126,7 @@ def run_inference(
         torch.manual_seed(seed)
     else:
         seed = torch.seed()
-    logger.info(f"Using seed {seed}")
+        logger.info(f"Using seed {seed}")
 
     pipeline_output = pipeline(
         prompt=prompt,
