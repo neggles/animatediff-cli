@@ -204,6 +204,13 @@ def generate(
         logger.info(f"Running prompt {idx + 1}/{num_prompts}")
         n_prompt = model_config.n_prompt[idx] if len(model_config.n_prompt) > 1 else model_config.n_prompt[0]
         seed = seed = model_config.seed[idx] if len(model_config.seed) > 1 else model_config.seed[0]
+
+        # duplicated in run_inference, but this lets us use it for frame save dirs
+        # TODO: Move gif saving out of run_inference...
+        if seed == -1:
+            seed = torch.seed()
+            logger.info(f"Using seed {seed}")
+
         output = run_inference(
             pipeline=pipeline,
             prompt=prompt,
@@ -220,7 +227,7 @@ def generate(
         outputs.append(output)
         torch.cuda.empty_cache()
         if no_frames is not True:
-            save_frames(output, save_dir.joinpath(f"{idx}"))
+            save_frames(output, save_dir.joinpath(f"{idx:02d}-{seed}"))
 
     logger.info("Generation complete!")
     if save_merged:
