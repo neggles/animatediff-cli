@@ -99,7 +99,7 @@ class FfmpegEncoder:
 
     def encode(self) -> tuple:
         self.input: InputNode = ffmpeg.input(
-            self.frames_dir.joinpath("*.png"), pattern_type="glob", framerate=self.in_fps
+            str(self.frames_dir.resolve().joinpath("%08d.png")), framerate=self.in_fps
         ).filter("fps", fps=self.in_fps)
         match self.codec:
             case VideoCodec.gif:
