@@ -1,5 +1,6 @@
 import logging
 import warnings
+from ast import Import
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
@@ -28,7 +29,6 @@ cli: typer.Typer = typer.Typer(
     no_args_is_help=True,
     pretty_exceptions_show_locals=False,
 )
-
 data_dir = get_dir("data")
 checkpoint_dir = data_dir.joinpath("models/sd")
 pipeline_dir = data_dir.joinpath("models/huggingface")
@@ -48,6 +48,14 @@ logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
 # you too tqdm
 warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
+
+try:
+    from animatediff.rife import app as rife_app
+
+    cli.add_typer(rife_app, name="rife")
+except ImportError:
+    logger.debug("RIFE not available, skipping...", exc_info=True)
+    rife_app = None
 
 
 def version_callback(value: bool):
