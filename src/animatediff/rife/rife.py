@@ -48,7 +48,7 @@ def interpolate(
     codec: Annotated[
         VideoCodec,
         typer.Option("--codec", "-c", help="Output video codec", show_default=True),
-    ] = VideoCodec.gif,
+    ] = VideoCodec.webm,
     lossless: Annotated[
         bool,
         typer.Option("--lossless", "-L", is_flag=True, help="Use lossless encoding (WebP only)"),
