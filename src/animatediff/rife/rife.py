@@ -104,7 +104,7 @@ def interpolate(
         model_path=rife_model_dir,
         input_path=frames_dir,
         output_path=rife_frames_dir,
-        time_step=max(1 / in_fps, 0.125),  # TODO: make this configurable?
+        time_step=1 / in_fps,  # TODO: make this configurable?
         spatial_tta=spatial_tta,
         temporal_tta=temporal_tta,
         uhd=uhd,
@@ -131,7 +131,7 @@ def interpolate(
         frames_dir=rife_frames_dir,
         out_file=out_file,
         codec=codec,
-        in_fps=in_fps * frame_multiplier,
+        in_fps=min(out_fps, in_fps * frame_multiplier),
         out_fps=out_fps,
         lossless=lossless,
     )
