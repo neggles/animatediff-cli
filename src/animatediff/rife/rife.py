@@ -140,6 +140,6 @@ def interpolate(
 
     logger.debug(f"ffmpeg result: {result}")
 
-    logger.info(f"Find the RIFE frames at: {rife_frames_dir.relative_to(Path.cwd())}")
-    logger.info(f"Find the output file at: {out_file.relative_to(Path.cwd())}")
+    logger.info(f"Find the RIFE frames at: {rife_frames_dir.absolute().relative_to(Path.cwd())}")
+    logger.info(f"Find the output file at: {out_file.absolute().relative_to(Path.cwd())}")
     logger.info("Done!")
