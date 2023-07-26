@@ -6,13 +6,12 @@ from typing import Union
 
 import torch
 from diffusers import AutoencoderKL, StableDiffusionPipeline
-from diffusers.schedulers import DPMSolverMultistepScheduler
-from diffusers.utils.import_utils import is_xformers_available
 from transformers import CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.pipeline_animation import AnimationPipeline
+from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import get_checkpoint_weights
@@ -52,8 +51,8 @@ def create_pipeline(
 
     # set up scheduler
     sched_kwargs = infer_config.noise_scheduler_kwargs
-    sched_kwargs.update({"algorithm_type": "dpmsolver++", "use_karras_sigmas": True})
-    scheduler = DPMSolverMultistepScheduler.from_config(sched_kwargs)
+    scheduler = get_scheduler(model_config.scheduler, sched_kwargs)
+    logger.info(f'Using scheduler "{model_config.scheduler}" ({scheduler.__class__.__name__})')
 
     # Load the checkpoint weights into the pipeline
     if model_config.path is not None:
