@@ -1,19 +1,12 @@
-from math import ceil
 from os import PathLike
 from pathlib import Path
-from typing import Union
 
-import imageio.v3 as iio
-import numpy as np
 import torch
 from einops import rearrange
-from networkx import tensor_product
 from PIL import Image
 from torch import Tensor
 from torchvision.utils import save_image
 from tqdm.rich import tqdm
-
-from animatediff.pipelines.pipeline_animation import AnimationPipeline
 
 
 def save_frames(video: Tensor, frames_dir: PathLike):
@@ -43,12 +36,4 @@ def save_video(video: Tensor, save_path: PathLike, fps: int = 8):
     images = [Image.fromarray(frame) for frame in frames]
     images[0].save(
         fp=save_path, format="GIF", append_images=images[1:], save_all=True, duration=(1 / fps * 1000), loop=0
-    )
-
-
-def device_info_str(device: torch.device) -> str:
-    device_info = torch.cuda.get_device_properties(device)
-    return (
-        f"Device: {device_info.name} {ceil(device_info.total_memory / 1024 ** 3)}GB, "
-        + f"CC {device_info.major}.{device_info.minor}, {device_info.multi_processor_count} SM(s)"
     )

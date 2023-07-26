@@ -29,6 +29,7 @@ def create_pipeline(
     base_model: Union[str, PathLike] = default_base_path,
     model_config: ModelConfig = ...,
     infer_config: InferenceConfig = ...,
+    use_xformers: bool = True,
 ) -> AnimationPipeline:
     """Create an AnimationPipeline from a pretrained model.
     Uses the base_model argument to load or download the pretrained reference pipeline model."""
@@ -39,10 +40,10 @@ def create_pipeline(
         raise FileNotFoundError(f"motion_module {motion_module} does not exist or is not a file")
 
     logger.info("Loading base model from pretrained")
-    tokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
-    text_encoder = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
-    vae = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
-    unet = UNet3DConditionModel.from_pretrained_2d(
+    tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
+    text_encoder: CLIPTextModel = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
+    vae: AutoencoderKL = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
+    unet: UNet3DConditionModel = UNet3DConditionModel.from_pretrained_2d(
         pretrained_model_path=base_model,
         motion_module_path=motion_module,
         subfolder="unet",
@@ -59,9 +60,10 @@ def create_pipeline(
         model_path = data_dir.joinpath(model_config.path)
         logger.info(f"Loading weights from {model_path}")
         if model_path.is_file():
-            logger.info("Loading from single checkpoint file")
+            logger.debug("Loading from single checkpoint file")
             unet_state_dict, tenc_state_dict, vae_state_dict = get_checkpoint_weights(model_path)
         elif model_path.is_dir():
+            logger.debug("Loading from Diffusers model directory")
             temp_pipeline = StableDiffusionPipeline.from_pretrained(model_path)
             unet_state_dict, tenc_state_dict, vae_state_dict = (
                 temp_pipeline.unet.state_dict(),
@@ -86,12 +88,10 @@ def create_pipeline(
     else:
         logger.info("Using base model weights (no checkpoint/LoRA)")
 
-    # enable xformers
-    if is_xformers_available():
-        logger.info("Enabling xformers memory efficient attention")
+    # enable xformers if available
+    if use_xformers:
+        logger.info("Enabling xformers memory-efficient attention")
         unet.enable_xformers_memory_efficient_attention()
-    else:
-        raise RuntimeError("Please install xformers, unless you have an 80GB GPU this won't work without it")
 
     # I'll deal with LoRA later...
 

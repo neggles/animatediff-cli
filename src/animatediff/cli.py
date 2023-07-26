@@ -1,6 +1,5 @@
 import logging
 import warnings
-from ast import Import
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
@@ -20,8 +19,9 @@ from animatediff.settings import (
     get_infer_config,
     get_model_config,
 )
+from animatediff.utils.device import device_info_str, model_dtype
 from animatediff.utils.model import checkpoint_to_pipeline, get_hf_pipeline
-from animatediff.utils.util import device_info_str, save_frames, save_video
+from animatediff.utils.util import save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
     context_settings=dict(help_option_names=["-h", "--help"]),
@@ -95,7 +95,7 @@ def generate(
             "-o",
             path_type=Path,
             file_okay=False,
-            help="Base output directory (subdirectory will be created for each run)",
+            help="Directory for output folders (frames, gifs, etc)",
         ),
     ] = Path("output/"),
     width: Annotated[
@@ -114,9 +114,13 @@ def generate(
         str,
         typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)"),
     ] = "cuda",
+    use_xformers: Annotated[
+        bool,
+        typer.Option("--xformers", "-x", is_flag=True, help="Use XFormers instead of SDP Attention"),
+    ] = False,
     force_half_vae: Annotated[
         bool,
-        typer.Option("--half-vae", is_flag=True, help="Force VAE to use fp16 if bf16 is not supported"),
+        typer.Option("--half-vae", is_flag=True, help="Force VAE to use fp16 (not recommended)"),
     ] = False,
     no_frames: Annotated[
         bool,
@@ -150,26 +154,51 @@ def generate(
     # bluh bluh safety checker
     set_diffusers_verbosity_error()
 
-    device = torch.device(device)
-    device_info = torch.cuda.get_device_properties(device)
-
-    logger.info(device_info_str(device_info))
-    has_bf16 = torch.cuda.is_bf16_supported()
-    if has_bf16:
-        logger.info("Device supports bfloat16, will run VAE in bf16")
-        vae_dtype = torch.bfloat16
-    elif force_half_vae:
-        logger.warn("bfloat16 not supported, but VAE forced to fp16!")
-        vae_dtype = torch.float16
+    device: torch.device = torch.device(device)
+    if device.type == "cpu":
+        logger.warn("Device explicitly set to CPU, will run everything in fp32")
+        logger.warn("This is likely to be *incredibly* slow, but I don't tell you how to live.")
+        if use_xformers:
+            logger.error("XFormers is not supported on CPU! Disabling it and continuing...")
+            use_xformers = False
+    elif device.type == "cuda":
+        if torch.cuda.is_available():
+            logger.info("CUDA is available, will use mixed-precision inference")
+            device_info = torch.cuda.get_device_properties(device)
+            logger.info(f"Using device: {device_info_str(device_info)}")
+        else:
+            logger.critical("CUDA is not available but device is set to CUDA! Exiting...")
+            raise RuntimeError("CUDA is not available but device is set to CUDA!")
     else:
-        logger.info("bfloat16 not supported, will run VAE in fp32")
-        vae_dtype = torch.float32
+        logger.info(f"Using non-CUDA device: {device.type}{device.index if device.index is not None else ''}")
+        if use_xformers:
+            logger.warn("XFormers may or may not work on this device! Will try anyway...")
 
-    unet_dtype = torch.float16
-    tenc_dtype = torch.float16
+    # get dtypes for each model, based on the device we're using.
+    unet_dtype = model_dtype("unet", device)  # fp16 unless on CPU
+    tenc_dtype = model_dtype("tenc", device)  # fp16 unless on CPU
+    vae_dtype = model_dtype("vae", device)  # bfloat16 if available, otherwise fp32
 
-    logger.info(f"Using model: {model_name_or_path}")
+    if device.type == "cpu" and force_half_vae:
+        logger.critical("Can't force VAE to fp16 mode on CPU! Exiting...")
+        raise RuntimeError("Can't force VAE to fp16 mode on CPU!")
 
+    if force_half_vae:
+        # you probably shouldn't do this, but I'm not your mom
+        if torch.cuda.is_bf16_supported():
+            logger.warn("Forcing VAE to use fp16 despite bfloat16 support! This is a bad idea!")
+            logger.warn("If you're not sure why you're doing this, you probably shouldn't be.")
+            vae_dtype = torch.float16
+        else:
+            logger.warn("Forcing VAE to use fp16 instead of fp32 on CUDA! This may result in black outputs!")
+            logger.warn("Running a VAE in fp16 can result in black images or poor output quality.")
+            logger.warn("I don't tell you how to live, but you probably shouldn't do this.")
+            vae_dtype = torch.float16
+
+    logger.info(f"Selected data types: {unet_dtype=}, {tenc_dtype=}, {vae_dtype=}")
+
+    # Get the base model if we don't have it already
+    logger.info(f"Using base model: {model_name_or_path}")
     model_save_dir = get_dir("data/models/huggingface").joinpath(str(model_name_or_path).split("/")[-1])
     model_is_repo_id = False if model_name_or_path.joinpath("model_index.json").exists() else True
     # if we have a HF repo ID, download it
@@ -195,18 +224,20 @@ def generate(
         base_model=model_name_or_path,
         model_config=model_config,
         infer_config=infer_config,
+        use_xformers=use_xformers,
     )
+    logger.info("Loading pipeline into device...")
     pipeline.unet = pipeline.unet.to(device=device, dtype=unet_dtype)
     pipeline.text_encoder = pipeline.text_encoder.to(device=device, dtype=tenc_dtype)
     pipeline.vae = pipeline.vae.to(device=device, dtype=vae_dtype)
 
     # save config to output directory
-    logger.info("Saving prompt config to output dir...")
+    logger.info("Saving prompt config to output dir")
     save_config_path = save_dir.joinpath("prompt.json")
     save_config_path.write_text(model_config.json(), encoding="utf-8")
 
     num_prompts = len(model_config.prompt)
-    logger.info(f"Generating {num_prompts} animations")
+    logger.info(f"Initialization complete! Starting generation for {num_prompts} animations...")
     outputs = []
     for idx, prompt in enumerate(model_config.prompt):
         logger.info(f"Running prompt {idx + 1}/{num_prompts}")

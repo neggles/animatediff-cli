@@ -274,8 +274,6 @@ class VersatileAttention(Attention):
     def forward(
         self, hidden_states: Tensor, encoder_hidden_states=None, attention_mask=None, video_length=None
     ):
-        batch_size, sequence_length, _ = hidden_states.shape
-
         if self.attention_mode == "Temporal":
             d = hidden_states.shape[1]
             hidden_states = rearrange(hidden_states, "(b f) d c -> (b d) f c", f=video_length)
@@ -291,55 +289,10 @@ class VersatileAttention(Attention):
         else:
             raise NotImplementedError
 
-        encoder_hidden_states = encoder_hidden_states
-
-        if self.group_norm is not None:
-            hidden_states = self.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
-
-        query = self.to_q(hidden_states)
-        dim = query.shape[-1]
-
-        if encoder_hidden_states is None:
-            encoder_hidden_states = hidden_states
-
-        key = self.to_k(encoder_hidden_states)
-        value = self.to_v(encoder_hidden_states)
-
-        query: Tensor = self.head_to_batch_dim(query).contiguous()
-        key: Tensor = self.head_to_batch_dim(key).contiguous()
-        value: Tensor = self.head_to_batch_dim(value).contiguous()
-
-        if attention_mask is not None:
-            if attention_mask.shape[-1] != query.shape[1]:
-                target_length = query.shape[1]
-                attention_mask = F.pad(attention_mask, (0, target_length), value=0.0)
-                attention_mask = attention_mask.repeat_interleave(self.heads, dim=0)
-
-        # attention, what we cannot get enough of
-        if self.set_use_memory_efficient_attention_xformers:
-            hidden_states = self._memory_efficient_attention_xformers(query, key, value, attention_mask)
-            # Some versions of xformers return output in fp32, cast it back to the dtype of the input
-            hidden_states = hidden_states.to(query.dtype)
-        else:
-            if self._slice_size is None or query.shape[0] // self._slice_size == 1:
-                hidden_states = self._attention(query, key, value, attention_mask)
-            else:
-                hidden_states = self._sliced_attention(
-                    query, key, value, sequence_length, dim, attention_mask
-                )
-
-        # linear proj
-        hidden_states = self.to_out[0](hidden_states)
-
-        # dropout
-        hidden_states = self.to_out[1](hidden_states)
+        # attention processor makes this easy so that's nice
+        hidden_states = self.processor(self, hidden_states, encoder_hidden_states, attention_mask)
 
         if self.attention_mode == "Temporal":
             hidden_states = rearrange(hidden_states, "(b d) f c -> (b f) d c", d=d)
 
-        return hidden_states
-
-    def _memory_efficient_attention_xformers(self, query, key, value, attention_mask):
-        hidden_states = xops.memory_efficient_attention(query, key, value, attn_bias=attention_mask)
-        hidden_states = self.batch_to_head_dim(hidden_states)
         return hidden_states

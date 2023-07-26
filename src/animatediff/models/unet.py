@@ -69,6 +69,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         norm_eps: float = 1e-5,
         cross_attention_dim: int = 1280,
         attention_head_dim: Union[int, Tuple[int]] = 8,
+        num_attention_heads: Optional[Union[int, Tuple[int]]] = None,
         dual_cross_attention: bool = False,
         use_linear_projection: bool = False,
         class_embed_type: Optional[str] = None,
@@ -364,6 +365,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             timesteps = timesteps[None].to(sample.device)
 
         # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
+        num_frames = sample.shape[2]
         timesteps = timesteps.expand(sample.shape[0])
 
         t_emb = self.time_proj(timesteps)
@@ -461,7 +463,8 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         motion_module_path = Path(motion_module_path)
         if subfolder is not None:
             pretrained_model_path = pretrained_model_path.joinpath(subfolder)
-        print(f"loaded temporal unet's pretrained weights from {pretrained_model_path} ...")
+
+        logger.info(f"Loading temporal unet weights into {pretrained_model_path}")
 
         config_file = pretrained_model_path / "config.json"
         if not (config_file.exists() and config_file.is_file()):
