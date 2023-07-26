@@ -10,6 +10,7 @@ from diffusers.schedulers import (
     KDPM2DiscreteScheduler,
     LMSDiscreteScheduler,
     PNDMScheduler,
+    UniPCMultistepScheduler,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,8 @@ def get_scheduler(name: str, config: dict = {}):
             sched_class = KDPM2DiscreteScheduler
         case "dpm_2_a":
             sched_class = KDPM2AncestralDiscreteScheduler
+        case "unipc":
+            sched_class = UniPCMultistepScheduler
         case _:
             raise ValueError(f"Invalid scheduler {'k_' if is_karras else ''}{name}")
 
