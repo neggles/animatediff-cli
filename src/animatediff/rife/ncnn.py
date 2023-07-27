@@ -63,7 +63,7 @@ class RifeNCNNOptions(BaseModel):
             "-n",
             num_frame,
             "-s",
-            self.time_step,
+            f"{self.time_step:.5f}",
             "-g",
             gpu_id,
             "-j",
