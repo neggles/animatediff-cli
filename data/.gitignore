@@ -1,2 +1,5 @@
 *
 !.gitignore
+!/models/
+!/embeddings/
+!/rife/
