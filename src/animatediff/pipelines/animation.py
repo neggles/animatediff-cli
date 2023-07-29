@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from diffusers.configuration_utils import FrozenDict
 from diffusers.image_processor import VaeImageProcessor
+from diffusers.loaders import TextualInversionLoaderMixin
 from diffusers.models import AutoencoderKL
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.schedulers import (
@@ -34,7 +35,7 @@ class AnimationPipelineOutput(BaseOutput):
     videos: Union[torch.Tensor, np.ndarray]
 
 
-class AnimationPipeline(DiffusionPipeline):
+class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     _optional_components = []
 
     vae: AutoencoderKL

@@ -11,6 +11,7 @@ from transformers import CLIPTextModel, CLIPTokenizer
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.animation import AnimationPipeline
+from animatediff.pipelines.ti import get_text_embeddings, scan_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
@@ -18,6 +19,7 @@ from animatediff.utils.model import get_checkpoint_weights
 from animatediff.utils.util import save_video
 
 logger = logging.getLogger(__name__)
+
 data_dir = get_dir("data")
 default_base_path = data_dir.joinpath("models/huggingface/stable-diffusion-v1-5")
 
@@ -102,6 +104,26 @@ def create_pipeline(
         unet=unet,
         scheduler=scheduler,
     )
+
+    # Load TI embeddings
+    text_embeds = get_text_embeddings()
+    if len(text_embeds) > 0:
+        loaded_embeds = []
+        failed_embeds = []
+        logger.info(f"Found {len(text_embeds)} TI embeddings, loading...")
+        for embed_name, embed in text_embeds:
+            try:
+                pipeline.load_textual_inversion(embed.absolute(), token=embed_name)
+                loaded_embeds.append(embed_name)
+            except Exception as e:
+                logger.warning(f"Could not load TI embedding {embed_name}", exc_info=e)
+                failed_embeds.append(embed_name)
+        logger.info(f"Loaded {len(loaded_embeds)} embeddings: {loaded_embeds}")
+        if len(failed_embeds) > 0:
+            logger.warning(f"Failed to load {len(failed_embeds)} embeddings: {failed_embeds}")
+    else:
+        logger.info("No TI embeddings found, skipping...")
+
     return pipeline
 
 
