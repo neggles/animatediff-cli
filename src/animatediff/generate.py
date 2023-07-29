@@ -10,7 +10,7 @@ from transformers import CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
-from animatediff.pipelines.pipeline_animation import AnimationPipeline
+from animatediff.pipelines.animation import AnimationPipeline
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
