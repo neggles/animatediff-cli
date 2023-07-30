@@ -149,7 +149,7 @@ class FfmpegEncoder:
             stream = self._interpolate(stream, self.out_fps)
 
         stream = stream.output(
-            self._out_file, pix_fmt="yuv420p", vcodec="libvpx-vp9", video_bitrate=0, crf=30
+            self._out_file, pix_fmt="yuv420p", vcodec="libvpx-vp9", video_bitrate=0, crf=24
         )
         return stream.run()
 
