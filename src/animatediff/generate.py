@@ -6,7 +6,7 @@ from typing import Union
 
 import torch
 from diffusers import AutoencoderKL, StableDiffusionPipeline
-from transformers import CLIPTextModel, CLIPTokenizer
+from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
@@ -50,6 +50,7 @@ def create_pipeline(
         subfolder="unet",
         unet_additional_kwargs=infer_config.unet_additional_kwargs,
     )
+    feature_extractor = CLIPImageProcessor.from_pretrained(base_model, subfolder="feature_extractor")
 
     # set up scheduler
     sched_kwargs = infer_config.noise_scheduler_kwargs
@@ -103,26 +104,21 @@ def create_pipeline(
         tokenizer=tokenizer,
         unet=unet,
         scheduler=scheduler,
+        feature_extractor=feature_extractor,
     )
 
     # Load TI embeddings
     text_embeds = get_text_embeddings()
     if len(text_embeds) > 0:
-        loaded_embeds = []
-        failed_embeds = []
-        logger.info(f"Found {len(text_embeds)} TI embeddings, loading...")
-        for embed_name, embed in text_embeds:
+        logger.info(f"Loading {len(text_embeds)} TI embeddings...")
+        for token, embed in text_embeds.items():
             try:
-                pipeline.load_textual_inversion(embed.absolute(), token=embed_name)
-                loaded_embeds.append(embed_name)
+                pipeline.load_textual_inversion({token: embed})
             except Exception as e:
-                logger.warning(f"Could not load TI embedding {embed_name}", exc_info=e)
-                failed_embeds.append(embed_name)
-        logger.info(f"Loaded {len(loaded_embeds)} embeddings: {loaded_embeds}")
-        if len(failed_embeds) > 0:
-            logger.warning(f"Failed to load {len(failed_embeds)} embeddings: {failed_embeds}")
+                logger.error(f"Failed to load TI embedding: {token}", exc_info=True)
+                raise e
     else:
-        logger.info("No TI embeddings found, skipping...")
+        logger.info("No TI embeddings found")
 
     return pipeline
 

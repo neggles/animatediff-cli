@@ -10,8 +10,10 @@ except ImportError:
 from functools import lru_cache
 from os import environ
 from pathlib import Path
+from warnings import filterwarnings
 
 from rich.console import Console
+from tqdm import TqdmExperimentalWarning
 
 PACKAGE = __package__.replace("_", "-")
 PACKAGE_ROOT = Path(__file__).parent.parent
@@ -21,6 +23,11 @@ HF_HUB_CACHE = Path(environ.get("HUGGINGFACE_HUB_CACHE", HF_HOME.joinpath("hub")
 
 console = Console(highlight=True)
 err_console = Console(stderr=True)
+
+# shhh torch, don't worry about it it's fine
+filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
+# you too tqdm
+filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 
 @lru_cache(maxsize=4)
@@ -33,3 +40,24 @@ def get_dir(dirname: str = "data") -> Path:
         dirpath = Path.cwd().joinpath(dirname)
     dirpath.mkdir(parents=True, exist_ok=True)
     return dirpath.absolute()
+
+
+__all__ = [
+    "__version__",
+    "version_tuple",
+    "PACKAGE",
+    "PACKAGE_ROOT",
+    "HF_HOME",
+    "HF_HUB_CACHE",
+    "console",
+    "err_console",
+    "get_dir",
+    "models",
+    "pipelines",
+    "rife",
+    "utils",
+    "cli",
+    "generate",
+    "schedulers",
+    "settings",
+]
