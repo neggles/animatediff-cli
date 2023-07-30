@@ -11,12 +11,12 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.animation import AnimationPipeline
-from animatediff.pipelines.ti import get_text_embeddings, scan_text_embeddings
+from animatediff.pipelines.ti import get_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import get_checkpoint_weights
-from animatediff.utils.util import save_video
+from animatediff.utils.util import path_from_cwd, save_video
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def create_pipeline(
     if not (motion_module.exists() and motion_module.is_file()):
         raise FileNotFoundError(f"motion_module {motion_module} does not exist or is not a file")
 
-    logger.info("Loading base model from pretrained")
+    logger.info("Loading base model...")
     tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
     text_encoder: CLIPTextModel = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
     vae: AutoencoderKL = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
@@ -135,6 +135,10 @@ def run_inference(
     duration: int = 16,
     idx: int = 0,
     out_dir: PathLike = ...,
+    context_frames: int = -1,
+    context_stride: int = 3,
+    context_overlap: int = 4,
+    context_schedule: str = "uniform",
     return_dict: bool = False,
 ):
     out_dir = Path(out_dir)  # ensure out_dir is a Path
@@ -154,6 +158,10 @@ def run_inference(
         height=height,
         video_length=duration,
         return_dict=return_dict,
+        context_frames=context_frames,
+        context_stride=context_stride + 1,
+        context_overlap=context_overlap,
+        context_schedule=context_schedule,
     )
     logger.info("Generation complete, saving...")
 

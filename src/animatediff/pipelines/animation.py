@@ -33,8 +33,9 @@ from tqdm.rich import tqdm
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff.models.unet import UNet3DConditionModel
+from animatediff.pipelines.context import get_context_scheduler, get_total_steps
 
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,6 +51,14 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     tokenizer: CLIPTokenizer
     unet: UNet3DConditionModel
     feature_extractor: CLIPImageProcessor
+    scheduler: Union[
+        DDIMScheduler,
+        DPMSolverMultistepScheduler,
+        EulerAncestralDiscreteScheduler,
+        EulerDiscreteScheduler,
+        LMSDiscreteScheduler,
+        PNDMScheduler,
+    ]
 
     def __init__(
         self,
@@ -342,7 +351,9 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         # video = self.vae.decode(latents).sample
         video = []
         for frame_idx in range(latents.shape[0]):
-            video.append(self.vae.decode(latents[frame_idx : frame_idx + 1].to(self.vae.dtype)).sample)
+            video.append(
+                self.vae.decode(latents[frame_idx : frame_idx + 1].to(self.vae.device, self.vae.dtype)).sample
+            )
         video = torch.cat(video)
         video = rearrange(video, "(b f) c h w -> b c f h w", f=video_length)
         video = (video / 2 + 0.5).clamp(0, 1)
@@ -440,13 +451,13 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             )
 
         if latents is None:
-            latents = randn_tensor(shape, generator=generator, device=device, dtype=dtype)
+            latents = randn_tensor(shape, generator=generator, device=self.unet.device, dtype=dtype)
         else:
-            latents = latents.to(device)
+            latents = latents
 
         # scale the initial noise by the standard deviation required by the scheduler
         latents = latents * self.scheduler.init_noise_sigma
-        return latents
+        return latents.to(device, dtype)
 
     @torch.no_grad()
     def __call__(
@@ -469,11 +480,18 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
         cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+        context_frames: int = -1,
+        context_stride: int = 3,
+        context_overlap: int = 4,
+        context_schedule: str = "uniform",
         **kwargs,
     ):
         # Default height and width to unet
         height = height or self.unet.config.sample_size * self.vae_scale_factor
         width = width or self.unet.config.sample_size * self.vae_scale_factor
+
+        # 16 frames is max reliable number for one-shot mode, so we use sequential mode for longer videos
+        sequential_mode = video_length is not None and video_length > 16
 
         # 1. Check inputs. Raise error if not correct
         self.check_inputs(
@@ -481,7 +499,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         )
 
         # Define call parameters
-
         batch_size = 1
         if latents is not None:
             batch_size = latents.shape[0]
@@ -522,35 +539,66 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             height,
             width,
             prompt_embeds.dtype,
-            device,
+            torch.device("cpu") if sequential_mode else device,  # keep latents on cpu for sequential mode
             generator,
             latents,
         )
-        latents_dtype = latents.dtype
 
         # 6. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
+        # 6.5 - Infinite context loop shenanigans
+        context_scheduler = get_context_scheduler(context_schedule)
+        total_steps = get_total_steps(
+            context_scheduler,
+            timesteps,
+            num_inference_steps,
+            latents.shape[2],
+            context_frames,
+            context_stride,
+            context_overlap,
+        )
+
         # 7. Denoising loop
         num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
-        with self.progress_bar(total=num_inference_steps) as progress_bar:
+        with self.progress_bar(total=total_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                # expand the latents if we are doing classifier free guidance
-                latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
-                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                noise_pred = torch.zeros(
+                    (latents.shape[0] * (2 if do_classifier_free_guidance else 1), *latents.shape[1:]),
+                    device=latents.device,
+                    dtype=latents.dtype,
+                )
+                counter = torch.zeros(
+                    (1, 1, latents.shape[2], 1, 1), device=latents.device, dtype=latents.dtype
+                )
 
-                # predict the noise residual
-                noise_pred = self.unet(
-                    latent_model_input,
-                    t,
-                    encoder_hidden_states=prompt_embeds,
-                    cross_attention_kwargs=cross_attention_kwargs,
-                    return_dict=False,
-                )[0]
+                for context in context_scheduler(
+                    i, num_inference_steps, latents.shape[2], context_frames, context_stride, context_overlap
+                ):
+                    # expand the latents if we are doing classifier free guidance
+                    latent_model_input = (
+                        latents[:, :, context]
+                        .to(device)
+                        .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
+                    )
+                    latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+
+                    # predict the noise residual
+                    pred = self.unet(
+                        latent_model_input.to(self.unet.device, self.unet.dtype),
+                        t,
+                        encoder_hidden_states=prompt_embeds,
+                        cross_attention_kwargs=cross_attention_kwargs,
+                        return_dict=False,
+                    )[0]
+
+                    noise_pred[:, :, context] += pred.to(dtype=latents.dtype, device=latents.device)
+                    counter[:, :, context] += 1
+                    progress_bar.update()
 
                 # perform guidance
                 if do_classifier_free_guidance:
-                    noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+                    noise_pred_uncond, noise_pred_text = (noise_pred / counter).chunk(2)
                     noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
 
                 # compute the previous noisy sample x_t -> x_t-1
@@ -566,7 +614,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                 if i == len(timesteps) - 1 or (
                     (i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0
                 ):
-                    progress_bar.update()
                     if callback is not None and i % callback_steps == 0:
                         callback(i, t, latents)
 

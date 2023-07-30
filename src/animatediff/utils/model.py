@@ -7,6 +7,7 @@ from huggingface_hub import snapshot_download
 from tqdm.rich import tqdm
 
 from animatediff import HF_HUB_CACHE, get_dir
+from animatediff.utils.util import path_from_cwd
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +64,9 @@ def checkpoint_to_pipeline(
     target_dir: Optional[Path] = None,
     save: bool = True,
 ) -> StableDiffusionPipeline:
-    logger.info(f"Converting checkpoint: {checkpoint}")
+    logger.debug(f"Converting checkpoint {path_from_cwd(checkpoint)}")
     if target_dir is None:
         target_dir = pipeline_dir.joinpath(checkpoint.stem)
-        logger.info(f"Using default output directory: {target_dir}")
 
     pipeline = StableDiffusionPipeline.from_single_file(
         pretrained_model_link_or_path=str(checkpoint.absolute()),
@@ -75,7 +75,9 @@ def checkpoint_to_pipeline(
     )
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    pipeline.save_pretrained(target_dir, safe_serialization=True)
+    if save:
+        logger.info(f"Saving pipeline to {path_from_cwd(target_dir)}")
+        pipeline.save_pretrained(target_dir, safe_serialization=True)
     return pipeline, target_dir
 
 

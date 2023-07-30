@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 import torch
 import typer
 from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
+from numpy import info
 from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
@@ -19,7 +20,7 @@ from animatediff.settings import (
 )
 from animatediff.utils.device import device_info_str, model_dtype
 from animatediff.utils.model import checkpoint_to_pipeline, get_hf_pipeline
-from animatediff.utils.util import save_frames, save_video
+from animatediff.utils.util import path_from_cwd, save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
     context_settings=dict(help_option_names=["-h", "--help"]),
@@ -82,6 +83,78 @@ def generate(
             help="Path to a prompt/generation config file",
         ),
     ] = Path("config/prompts/01-ToonYou.json"),
+    width: Annotated[
+        int,
+        typer.Option("--width", "-W", min=512, max=3840, rich_help_panel="Generation"),
+    ] = 512,
+    height: Annotated[
+        int,
+        typer.Option("--height", "-H", min=512, max=2160, rich_help_panel="Generation"),
+    ] = 512,
+    length: Annotated[
+        int,
+        typer.Option("--length", "-L", min=1, max=999, rich_help_panel="Generation"),
+    ] = 16,
+    context: Annotated[
+        Optional[int],
+        typer.Option(
+            "--context",
+            "-C",
+            min=1,
+            max=24,
+            help="Number of frames to condition on (default: length)",
+            show_default=False,
+            rich_help_panel="Generation",
+        ),
+    ] = None,
+    overlap: Annotated[
+        Optional[int],
+        typer.Option(
+            "--overlap",
+            "-O",
+            min=1,
+            max=12,
+            help="Number of frames to overlap in context (default: context//2)",
+            show_default=False,
+            rich_help_panel="Generation",
+        ),
+    ] = None,
+    stride: Annotated[
+        Optional[int],
+        typer.Option(
+            "--stride",
+            "-S",
+            min=1,
+            max=8,
+            help="Max motion stride as a power of 2",
+            rich_help_panel="Generation",
+        ),
+    ] = None,
+    device: Annotated[
+        str,
+        typer.Option(
+            "--device", "-d", help="Device to run on (cpu, cuda, cuda:id)", rich_help_panel="Advanced"
+        ),
+    ] = "cuda",
+    use_xformers: Annotated[
+        bool,
+        typer.Option(
+            "--xformers",
+            "-x",
+            is_flag=True,
+            help="Use XFormers instead of SDP Attention",
+            rich_help_panel="Advanced",
+        ),
+    ] = False,
+    force_half_vae: Annotated[
+        bool,
+        typer.Option(
+            "--half-vae",
+            is_flag=True,
+            help="Force VAE to use fp16 (not recommended)",
+            rich_help_panel="Advanced",
+        ),
+    ] = False,
     out_dir: Annotated[
         Path,
         typer.Option(
@@ -90,39 +163,28 @@ def generate(
             path_type=Path,
             file_okay=False,
             help="Directory for output folders (frames, gifs, etc)",
+            rich_help_panel="Output",
         ),
     ] = Path("output/"),
-    width: Annotated[
-        int,
-        typer.Option("--width", "-W", min=512, max=3840),
-    ] = 512,
-    height: Annotated[
-        int,
-        typer.Option("--height", "-H", min=512, max=2160),
-    ] = 512,
-    length: Annotated[
-        int,
-        typer.Option("--length", "-L", min=1, max=60),
-    ] = 16,
-    device: Annotated[
-        str,
-        typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)"),
-    ] = "cuda",
-    use_xformers: Annotated[
-        bool,
-        typer.Option("--xformers", "-x", is_flag=True, help="Use XFormers instead of SDP Attention"),
-    ] = False,
-    force_half_vae: Annotated[
-        bool,
-        typer.Option("--half-vae", is_flag=True, help="Force VAE to use fp16 (not recommended)"),
-    ] = False,
     no_frames: Annotated[
         bool,
-        typer.Option("--no-frames", "-N", is_flag=True, help="Don't save frames, only the animation"),
+        typer.Option(
+            "--no-frames",
+            "-N",
+            is_flag=True,
+            help="Don't save frames, only the animation",
+            rich_help_panel="Output",
+        ),
     ] = False,
     save_merged: Annotated[
         bool,
-        typer.Option("--save-merged", "-m", is_flag=True, help="Save a merged animation of all prompts"),
+        typer.Option(
+            "--save-merged",
+            "-m",
+            is_flag=True,
+            help="Save a merged animation of all prompts",
+            rich_help_panel="Output",
+        ),
     ] = False,
     version: Annotated[
         Optional[bool],
@@ -140,8 +202,15 @@ def generate(
     Do the thing. Make the animation happen. Waow.
     """
 
+    if context is None:
+        context = min(length, 16)
+    if overlap is None:
+        overlap = context // 2
+    if stride is None:
+        stride = 4
+
     config_path = config_path.absolute()
-    logger.info(f"Using generation config: {config_path}")
+    logger.info(f"Using generation config: {path_from_cwd(config_path)}")
     model_config: ModelConfig = get_model_config(config_path)
     infer_config: InferenceConfig = get_infer_config()
 
@@ -197,11 +266,11 @@ def generate(
     model_is_repo_id = False if model_name_or_path.joinpath("model_index.json").exists() else True
     # if we have a HF repo ID, download it
     if model_is_repo_id:
-        logger.info("Base model is a HuggingFace repo ID")
+        logger.debug("Base model is a HuggingFace repo ID")
         if model_save_dir.joinpath("model_index.json").exists():
-            logger.info(f"Base model already downloaded to: {model_save_dir}")
+            logger.debug(f"Base model already downloaded to: {path_from_cwd(model_save_dir)}")
         else:
-            logger.info(f"Downloading from {model_name_or_path}")
+            logger.info(f"Downloading base model from {model_name_or_path}")
             get_hf_pipeline(model_name_or_path, model_save_dir.absolute())
         model_name_or_path = model_save_dir
 
@@ -210,39 +279,39 @@ def generate(
     # make the output directory
     save_dir = out_dir.joinpath(f"{time_str}-{model_config.save_name}")
     save_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Saving output to {save_dir}")
+    logger.info(f"Will save outputs to ./{path_from_cwd(save_dir)}")
 
-    # beware
-    logger.info("Creating pipeline...")
+    # beware the pipeline
     pipeline = create_pipeline(
         base_model=model_name_or_path,
         model_config=model_config,
         infer_config=infer_config,
         use_xformers=use_xformers,
     )
-    logger.info("Loading pipeline into device...")
+    logger.info(f"Sending pipeline to device \"{device.type}{device.index if device.index else ''}\"")
     pipeline.unet = pipeline.unet.to(device=device, dtype=unet_dtype)
     pipeline.text_encoder = pipeline.text_encoder.to(device=device, dtype=tenc_dtype)
     pipeline.vae = pipeline.vae.to(device=device, dtype=vae_dtype)
 
     # save config to output directory
-    logger.info("Saving prompt config to output dir")
+    logger.info("Saving prompt config to output directory")
     save_config_path = save_dir.joinpath("prompt.json")
     save_config_path.write_text(model_config.json(), encoding="utf-8")
 
     num_prompts = len(model_config.prompt)
-    logger.info(f"Initialization complete! Starting generation for {num_prompts} animations...")
+    logger.info("Initialization complete!")
+    logger.info(f"Generating {num_prompts} animations:")
     outputs = []
     for idx, prompt in enumerate(model_config.prompt):
-        logger.info(f"Running prompt {idx + 1}/{num_prompts}")
+        logger.info(f"Running prompt {idx + 1} of {num_prompts}")
         n_prompt = model_config.n_prompt[idx] if len(model_config.n_prompt) > 1 else model_config.n_prompt[0]
         seed = seed = model_config.seed[idx] if len(model_config.seed) > 1 else model_config.seed[0]
 
         # duplicated in run_inference, but this lets us use it for frame save dirs
-        # TODO: Move gif saving out of run_inference...
+        # TODO: Move gif Output out of run_inference...
         if seed == -1:
             seed = torch.seed()
-        logger.info(f"Using seed {seed}")
+        logger.info(f"Generation seed: {seed}")
 
         output = run_inference(
             pipeline=pipeline,
@@ -256,6 +325,9 @@ def generate(
             duration=length,
             idx=idx,
             out_dir=save_dir,
+            context_frames=context,
+            context_overlap=overlap,
+            context_stride=stride,
         )
         outputs.append(output)
         torch.cuda.empty_cache()
@@ -264,7 +336,7 @@ def generate(
 
     logger.info("Generation complete!")
     if save_merged:
-        logger.info("Saving merged output video...")
+        logger.info("Output merged output video...")
         merged_output = torch.concat(outputs, dim=0)
         save_video(merged_output, save_dir.joinpath("final.gif"), n_rows=num_prompts)
 

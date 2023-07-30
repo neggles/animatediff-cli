@@ -553,9 +553,9 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         # load the weights into the model
         m, u = model.load_state_dict(state_dict, strict=False)
-        logger.info(f"### missing keys: {len(m)}; \n### unexpected keys: {len(u)};")
+        logger.debug(f"### missing keys: {len(m)}; \n### unexpected keys: {len(u)};")
 
         params = [p.numel() if "temporal" in n else 0 for n, p in model.named_parameters()]
-        logger.info(f"### Temporal Module Parameters: {sum(params) / 1e6} M")
+        logger.info(f"Loaded {sum(params) / 1e6}M-parameter motion module")
 
         return model
