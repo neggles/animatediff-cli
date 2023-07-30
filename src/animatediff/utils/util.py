@@ -37,3 +37,7 @@ def save_video(video: Tensor, save_path: PathLike, fps: int = 8):
     images[0].save(
         fp=save_path, format="GIF", append_images=images[1:], save_all=True, duration=(1 / fps * 1000), loop=0
     )
+
+
+def path_from_cwd(path: Path) -> str:
+    return str(path.absolute().relative_to(Path.cwd()))
