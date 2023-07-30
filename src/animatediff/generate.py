@@ -6,17 +6,17 @@ from typing import Union
 
 import torch
 from diffusers import AutoencoderKL, StableDiffusionPipeline
-from transformers import CLIPTextModel, CLIPTokenizer
+from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.animation import AnimationPipeline
-from animatediff.pipelines.ti import get_text_embeddings, scan_text_embeddings
+from animatediff.pipelines.ti import get_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import get_checkpoint_weights
-from animatediff.utils.util import save_video
+from animatediff.utils.util import path_from_cwd, save_video
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def create_pipeline(
     if not (motion_module.exists() and motion_module.is_file()):
         raise FileNotFoundError(f"motion_module {motion_module} does not exist or is not a file")
 
-    logger.info("Loading base model from pretrained")
+    logger.info("Loading base model...")
     tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
     text_encoder: CLIPTextModel = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
     vae: AutoencoderKL = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
@@ -50,6 +50,7 @@ def create_pipeline(
         subfolder="unet",
         unet_additional_kwargs=infer_config.unet_additional_kwargs,
     )
+    feature_extractor = CLIPImageProcessor.from_pretrained(base_model, subfolder="feature_extractor")
 
     # set up scheduler
     sched_kwargs = infer_config.noise_scheduler_kwargs
@@ -103,26 +104,21 @@ def create_pipeline(
         tokenizer=tokenizer,
         unet=unet,
         scheduler=scheduler,
+        feature_extractor=feature_extractor,
     )
 
     # Load TI embeddings
     text_embeds = get_text_embeddings()
     if len(text_embeds) > 0:
-        loaded_embeds = []
-        failed_embeds = []
-        logger.info(f"Found {len(text_embeds)} TI embeddings, loading...")
-        for embed_name, embed in text_embeds:
+        logger.info(f"Loading {len(text_embeds)} TI embeddings...")
+        for token, embed in text_embeds.items():
             try:
-                pipeline.load_textual_inversion(embed.absolute(), token=embed_name)
-                loaded_embeds.append(embed_name)
+                pipeline.load_textual_inversion({token: embed})
             except Exception as e:
-                logger.warning(f"Could not load TI embedding {embed_name}", exc_info=e)
-                failed_embeds.append(embed_name)
-        logger.info(f"Loaded {len(loaded_embeds)} embeddings: {loaded_embeds}")
-        if len(failed_embeds) > 0:
-            logger.warning(f"Failed to load {len(failed_embeds)} embeddings: {failed_embeds}")
+                logger.error(f"Failed to load TI embedding: {token}", exc_info=True)
+                raise e
     else:
-        logger.info("No TI embeddings found, skipping...")
+        logger.info("No TI embeddings found")
 
     return pipeline
 
@@ -139,6 +135,10 @@ def run_inference(
     duration: int = 16,
     idx: int = 0,
     out_dir: PathLike = ...,
+    context_frames: int = -1,
+    context_stride: int = 3,
+    context_overlap: int = 4,
+    context_schedule: str = "uniform",
     return_dict: bool = False,
 ):
     out_dir = Path(out_dir)  # ensure out_dir is a Path
@@ -158,6 +158,10 @@ def run_inference(
         height=height,
         video_length=duration,
         return_dict=return_dict,
+        context_frames=context_frames,
+        context_stride=context_stride + 1,
+        context_overlap=context_overlap,
+        context_schedule=context_schedule,
     )
     logger.info("Generation complete, saving...")
 
