@@ -165,15 +165,16 @@ def get_motion_modules(
             target_path = target_path.with_suffix(".fp16.safetensors")
         if target_path.exists() and force is not True:
             logger.debug(f"File {path_from_cwd(target_path)} already exists! Skipping download")
-        result = hf_hub_download(
-            repo_id=repo_id,
-            filename=target_path.name,
-            cache_dir=HF_HUB_CACHE,
-            local_dir=module_dir,
-            local_files_only=True,
-            resume_download=True,
-        )
-        logger.debug(f"Downloaded {path_from_cwd(result)}")
+        else:
+            result = hf_hub_download(
+                repo_id=repo_id,
+                filename=target_path.name,
+                cache_dir=HF_HUB_CACHE,
+                local_dir=module_dir,
+                local_files_only=True,
+                resume_download=True,
+            )
+            logger.debug(f"Downloaded {path_from_cwd(result)}")
 
 
 def get_base_model(model_name_or_path: str, local_dir: Path, force: bool = False):
