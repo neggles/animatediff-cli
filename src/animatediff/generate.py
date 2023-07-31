@@ -16,7 +16,7 @@ from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import get_checkpoint_weights
-from animatediff.utils.util import path_from_cwd, save_video
+from animatediff.utils.util import save_video
 
 logger = logging.getLogger(__name__)
 
