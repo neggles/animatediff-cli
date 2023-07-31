@@ -171,7 +171,7 @@ def get_motion_modules(
                 filename=target_path.name,
                 cache_dir=HF_HUB_CACHE,
                 local_dir=module_dir,
-                local_files_only=True,
+                local_dir_use_symlinks=False,
                 resume_download=True,
             )
             logger.debug(f"Downloaded {path_from_cwd(result)}")
