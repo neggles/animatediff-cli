@@ -1,13 +1,14 @@
 # animatediff
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/neggles/animatediff-cli/main.svg)](https://results.pre-commit.ci/latest/github/neggles/animatediff-cli/main)
 
-animatediff refactor, because I can.
+animatediff refactor, ~~because I can.~~ with significantly lower VRAM usage and infinite
+generation length support.
 
 # LoRA loading is ABSOLUTELY NOT IMPLEMENTED YET!
 
-## Also this currently only works with xformers and on a GPU.
-
-I did what I could, okay? there's a lot of changes between Diffusers 1.11.1 and 1.18.0...
+This can theoretically run on CPU, but it's not recommended. Should work fine on a GPU, nVidia or otherwise,
+but I haven't tested on non-CUDA hardware. Uses PyTorch 2.0 Scaled-Dot-Product Attention (aka builtin xformers)
+by default, but you can pass `--xformers` to force using xformers if you *really* want.
 
 ### How To Use
 
@@ -17,7 +18,7 @@ I did what I could, okay? there's a lot of changes between Diffusers 1.11.1 and 
 
 ### but for real?
 
-Okay fine.
+Okay, fine. But it's still a little complicated and there's no webUI yet.
 
 ```sh
 git clone https://github.com/neggles/animatediff-cli
