@@ -433,7 +433,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
                     hidden_states=sample, temb=emb, encoder_hidden_states=encoder_hidden_states
                 )
 
-            down_block_res_samples += res_samples
+            down_block_res_samples = down_block_res_samples + res_samples
 
         # 4. mid
         if self.mid_block is not None:
