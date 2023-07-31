@@ -71,6 +71,19 @@ frame durations as 1/100ths of a second).
 
 Seems to work pretty well...
 
+## TODO:
+
+In no particular order:
+
+- [x] Infinite generation length support
+- [x] RIFE support
+- [ ] Automatic generate-then-interpolate mode
+- [x] Torch SDP Attention (make xformers optional)
+- [ ] Add a webUI
+- [ ] img2img support (start from an existing image and continue)
+- [ ] Drag remaining old Diffusers code up to latest
+- [ ] Stop using custom modules where possible (should be able to use Diffusers for all of it)
+
 ## Credits:
 
 see [guoyww/AnimateDiff](https://github.com/guoyww/AnimateDiff) (very little of this is my work)
