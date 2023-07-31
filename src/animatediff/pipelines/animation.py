@@ -595,8 +595,9 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                         return_dict=False,
                     )[0]
 
-                    noise_pred[:, :, context] += pred.to(dtype=latents.dtype, device=latents.device)
-                    counter[:, :, context] += 1
+                    pred = pred.to(dtype=latents.dtype, device=latents.device)
+                    noise_pred[:, :, context] = noise_pred[:, :, context] + pred
+                    counter[:, :, context] = counter[:, :, context] + 1
                     progress_bar.update()
 
                 # perform guidance

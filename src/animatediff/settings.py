@@ -101,6 +101,7 @@ class ModelConfig(BaseSettings):
     base: Optional[Path] = Field(None)  # Path to base checkpoint (if using a LoRA)
     path: Path = Field(...)  # Path to the model or LoRA checkpoint
     motion_module: Path = Field(...)  # Path to the motion module
+    compile: bool = Field(False)  # whether to compile the model with TorchDynamo
     seed: list[int] = Field([])  # Seed(s) for the random number generators
     scheduler: AnimateDiffusionScheduler = Field(AnimateDiffusionScheduler.k_dpmpp)  # Scheduler to use
     steps: int = 25  # Number of inference steps to run

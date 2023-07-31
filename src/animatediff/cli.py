@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 import torch
 import typer
 from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
+from einops._torch_specific import allow_ops_in_compiled_graph
 from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
@@ -239,6 +240,7 @@ def generate(
     set_diffusers_verbosity_error()
 
     device: torch.device = torch.device(device)
+    use_channels_last = False
     if device.type == "cpu":
         logger.warn("Device explicitly set to CPU, will run everything in fp32")
         logger.warn("This is likely to be *incredibly* slow, but I don't tell you how to live.")
@@ -249,6 +251,8 @@ def generate(
         if torch.cuda.is_available():
             logger.info("CUDA is available, will use mixed-precision inference")
             device_info = torch.cuda.get_device_properties(device)
+            if device_info.major >= 8:
+                use_channels_last = True  # Ampere and newer support channels last and it's faster
             logger.info(f"Using device: {device_info_str(device_info)}")
         else:
             logger.critical("CUDA is not available but device is set to CUDA! Exiting...")
@@ -267,9 +271,10 @@ def generate(
         logger.critical("Can't force VAE to fp16 mode on CPU! Exiting...")
         raise RuntimeError("Can't force VAE to fp16 mode on CPU!")
 
+    has_bfloat16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     if force_half_vae:
         # you probably shouldn't do this, but I'm not your mom
-        if torch.cuda.is_bf16_supported():
+        if has_bfloat16:
             logger.warn("Forcing VAE to use fp16 despite bfloat16 support! This is a bad idea!")
             logger.warn("If you're not sure why you're doing this, you probably shouldn't be.")
             vae_dtype = torch.float16
@@ -303,9 +308,22 @@ def generate(
         use_xformers=use_xformers,
     )
     logger.info(f"Sending pipeline to device \"{device.type}{device.index if device.index else ''}\"")
+    if use_channels_last:
+        logger.debug("Using channels last memory format for UNet")
+        pipeline.unet = pipeline.unet.to(memory_format=torch.channels_last)
     pipeline.unet = pipeline.unet.to(device=device, dtype=unet_dtype)
     pipeline.text_encoder = pipeline.text_encoder.to(device=device, dtype=tenc_dtype)
     pipeline.vae = pipeline.vae.to(device=device, dtype=vae_dtype)
+
+    # Compile model if enabled
+    if model_config.compile:
+        allow_ops_in_compiled_graph()  # make einops behave
+        logger.info("Compiling model with TorchDynamo. This may take a while...")
+        pipeline.freeze()
+        pipeline.unet = torch.compile(
+            pipeline.unet,
+            mode="reduce-overhead",
+        )
 
     # save config to output directory
     logger.info("Saving prompt config to output directory")
