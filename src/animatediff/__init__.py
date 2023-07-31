@@ -21,6 +21,10 @@ PACKAGE_ROOT = Path(__file__).parent.parent
 HF_HOME = Path(environ.get("HF_HOME", "~/.cache/huggingface"))
 HF_HUB_CACHE = Path(environ.get("HUGGINGFACE_HUB_CACHE", HF_HOME.joinpath("hub")))
 
+HF_LIB_NAME = "animatediff-cli"
+HF_LIB_VER = __version__
+HF_MODULE_REPO = "neggles/animatediff-modules"
+
 console = Console(highlight=True)
 err_console = Console(stderr=True)
 
