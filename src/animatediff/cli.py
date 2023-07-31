@@ -6,7 +6,6 @@ from typing import Annotated, Optional
 import torch
 import typer
 from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
-from numpy import info
 from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
@@ -19,7 +18,7 @@ from animatediff.settings import (
     get_model_config,
 )
 from animatediff.utils.device import device_info_str, model_dtype
-from animatediff.utils.model import checkpoint_to_pipeline, get_hf_pipeline
+from animatediff.utils.model import checkpoint_to_pipeline, get_base_model, get_motion_modules
 from animatediff.utils.util import path_from_cwd, save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
@@ -68,7 +67,7 @@ def generate(
             "--model-path",
             "-m",
             path_type=Path,
-            help="Base model to use for generation. Can be a local path or a HuggingFace model name.",
+            help="Base model to use (path or HF repo ID). You probably don't need to change this.",
         ),
     ] = Path("runwayml/stable-diffusion-v1-5"),
     config_path: Annotated[
@@ -80,20 +79,41 @@ def generate(
             exists=True,
             readable=True,
             dir_okay=False,
-            help="Path to a prompt/generation config file",
+            help="Path to a prompt configuration JSON file",
         ),
     ] = Path("config/prompts/01-ToonYou.json"),
     width: Annotated[
         int,
-        typer.Option("--width", "-W", min=512, max=3840, rich_help_panel="Generation"),
+        typer.Option(
+            "--width",
+            "-W",
+            min=512,
+            max=3840,
+            help="Width of generated frames",
+            rich_help_panel="Generation",
+        ),
     ] = 512,
     height: Annotated[
         int,
-        typer.Option("--height", "-H", min=512, max=2160, rich_help_panel="Generation"),
+        typer.Option(
+            "--height",
+            "-H",
+            min=512,
+            max=2160,
+            help="Height of generated frames",
+            rich_help_panel="Generation",
+        ),
     ] = 512,
     length: Annotated[
         int,
-        typer.Option("--length", "-L", min=1, max=999, rich_help_panel="Generation"),
+        typer.Option(
+            "--length",
+            "-L",
+            min=1,
+            max=999,
+            help="Number of frames to generate",
+            rich_help_panel="Generation",
+        ),
     ] = 16,
     context: Annotated[
         Optional[int],
@@ -102,7 +122,7 @@ def generate(
             "-C",
             min=1,
             max=24,
-            help="Number of frames to condition on (default: length)",
+            help="Number of frames to condition on (default: max of <length> or 24)",
             show_default=False,
             rich_help_panel="Generation",
         ),
@@ -126,7 +146,8 @@ def generate(
             "-S",
             min=1,
             max=8,
-            help="Max motion stride as a power of 2",
+            help="Max motion stride as a power of 2 (default: 4)",
+            show_default=False,
             rich_help_panel="Generation",
         ),
     ] = None,
@@ -262,17 +283,10 @@ def generate(
 
     # Get the base model if we don't have it already
     logger.info(f"Using base model: {model_name_or_path}")
-    model_save_dir = get_dir("data/models/huggingface").joinpath(str(model_name_or_path).split("/")[-1])
-    model_is_repo_id = False if model_name_or_path.joinpath("model_index.json").exists() else True
-    # if we have a HF repo ID, download it
-    if model_is_repo_id:
-        logger.debug("Base model is a HuggingFace repo ID")
-        if model_save_dir.joinpath("model_index.json").exists():
-            logger.debug(f"Base model already downloaded to: {path_from_cwd(model_save_dir)}")
-        else:
-            logger.info(f"Downloading base model from {model_name_or_path}")
-            get_hf_pipeline(model_name_or_path, model_save_dir.absolute())
-        model_name_or_path = model_save_dir
+    model_name_or_path = get_base_model(model_name_or_path, local_dir=get_dir("data/models/huggingface"))
+
+    # Ensure we have the motion modules
+    get_motion_modules()
 
     # get a timestamp for the output directory
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")

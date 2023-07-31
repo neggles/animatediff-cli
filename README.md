@@ -1,8 +1,9 @@
 # animatediff
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/neggles/animatediff-cli/main.svg)](https://results.pre-commit.ci/latest/github/neggles/animatediff-cli/main)
 
-animatediff refactor, ~~because I can.~~ with significantly lower VRAM usage and infinite
-generation length support.
+animatediff refactor, ~~because I can.~~ with significantly lower VRAM usage.
+
+Also, **infinite generation length support!** yay!
 
 # LoRA loading is ABSOLUTELY NOT IMPLEMENTED YET!
 
@@ -34,8 +35,19 @@ animatediff --help
 # There's a nice pretty help screen with a bunch of info that'll print here.
 ```
 
-If you can't work it out yourself from there, either I screwed something up, or this isn't
-debugged and functional enough for you to use (yet).
+From here you'll need to put whatever checkpoint you want to use into `data/models/sd`, copy
+one of the prompt configs in `config/prompts`, edit it with your choices of prompt and model (model
+paths in prompt .json files are **relative to `data/`**, e.g. `models/sd/vanilla.safetensors`), and
+off you go. There may be some issues with `k_dpm`, at the moment, try using `k_dpmpp` or `ddim`.
+
+Then it's something like (for an 8GB card):
+```sh
+animatediff generate -c 'config/prompts/waifu.json' -W 576 -H 576 -L 128 -C 16
+```
+You may have to drop `-C` down to 8 on cards with less than 8GB VRAM, and you can raise it to 20-24
+on cards with more. 24 is max.
+
+N.B. generating 128 frames is _**slow...**_
 
 ## RiFE!
 
