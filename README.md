@@ -1,12 +1,15 @@
 # animatediff
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/neggles/animatediff-cli/main.svg)](https://results.pre-commit.ci/latest/github/neggles/animatediff-cli/main)
 
-animatediff refactor, because I can.
+animatediff refactor, ~~because I can.~~ with significantly lower VRAM usage.
+
+Also, **infinite generation length support!** yay!
 
 # LoRA loading is ABSOLUTELY NOT IMPLEMENTED YET!
 
-## Also this currently only works with xformers and on a GPU.
-
-I did what I could, okay? there's a lot of changes between Diffusers 1.11.1 and 1.18.0...
+This can theoretically run on CPU, but it's not recommended. Should work fine on a GPU, nVidia or otherwise,
+but I haven't tested on non-CUDA hardware. Uses PyTorch 2.0 Scaled-Dot-Product Attention (aka builtin xformers)
+by default, but you can pass `--xformers` to force using xformers if you *really* want.
 
 ### How To Use
 
@@ -16,7 +19,7 @@ I did what I could, okay? there's a lot of changes between Diffusers 1.11.1 and 
 
 ### but for real?
 
-Okay fine.
+Okay, fine. But it's still a little complicated and there's no webUI yet.
 
 ```sh
 git clone https://github.com/neggles/animatediff-cli
@@ -24,7 +27,7 @@ cd animatediff-cli
 python3.10 -m venv .venv
 source .venv/bin/activate
 # install Torch. Use whatever your favourite torch version >= 2.0.0 is, but, good luck on non-nVidia...
-python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 # install the rest of all the things (probably! I may have missed some deps.)
 python -m pip install -e '.[dev]'
 # you should now be able to
@@ -32,8 +35,19 @@ animatediff --help
 # There's a nice pretty help screen with a bunch of info that'll print here.
 ```
 
-If you can't work it out yourself from there, either I screwed something up, or this isn't 
-debugged and functional enough for you to use (yet).
+From here you'll need to put whatever checkpoint you want to use into `data/models/sd`, copy
+one of the prompt configs in `config/prompts`, edit it with your choices of prompt and model (model
+paths in prompt .json files are **relative to `data/`**, e.g. `models/sd/vanilla.safetensors`), and
+off you go.
+
+Then it's something like (for an 8GB card):
+```sh
+animatediff generate -c 'config/prompts/waifu.json' -W 576 -H 576 -L 128 -C 16
+```
+You may have to drop `-C` down to 8 on cards with less than 8GB VRAM, and you can raise it to 20-24
+on cards with more. 24 is max.
+
+N.B. generating 128 frames is _**slow...**_
 
 ## RiFE!
 
@@ -41,9 +55,9 @@ I have added experimental support for [rife-ncnn-vulkan](https://github.com/nihu
 using the `animatediff rife interpolate` command. It has fairly self-explanatory help, and it has
 been tested on Linux, but I've **no idea** if it'll work on Windows.
 
-Either way, you'll need ffmpeg installed on your system and present in PATH, and you'll need to 
-download the rife-ncnn-vulkan release for your OS of choice from the GitHub repo (above). Unzip it, and 
-place the extracted folder at `data/rife/`. You should have a `data/rife/rife-ncnn-vulkan` executable, or `data\rife\rife-ncnn-vulkan.exe` on Windows. 
+Either way, you'll need ffmpeg installed on your system and present in PATH, and you'll need to
+download the rife-ncnn-vulkan release for your OS of choice from the GitHub repo (above). Unzip it, and
+place the extracted folder at `data/rife/`. You should have a `data/rife/rife-ncnn-vulkan` executable, or `data\rife\rife-ncnn-vulkan.exe` on Windows.
 
 You'll also need to reinstall the repo/package with:
 ```py
@@ -56,6 +70,19 @@ that to a 60fps WebM. (If you pick GIF mode, it'll be 50fps, because GIFs are cu
 frame durations as 1/100ths of a second).
 
 Seems to work pretty well...
+
+## TODO:
+
+In no particular order:
+
+- [x] Infinite generation length support
+- [x] RIFE support
+- [ ] Automatic generate-then-interpolate mode
+- [x] Torch SDP Attention (make xformers optional)
+- [ ] Add a webUI
+- [ ] img2img support (start from an existing image and continue)
+- [ ] Drag remaining old Diffusers code up to latest
+- [ ] Stop using custom modules where possible (should be able to use Diffusers for all of it)
 
 ## Credits:
 

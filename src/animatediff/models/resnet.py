@@ -10,12 +10,11 @@ from torch import Tensor, nn
 
 class InflatedConv3d(nn.Conv2d):
     def forward(self, x: Tensor) -> Tensor:
-        video_length = x.shape[2]
+        frames = x.shape[2]
 
         x = rearrange(x, "b c f h w -> (b f) c h w")
-        x = super().forward(x)
-        x = rearrange(x, "(b f) c h w -> b c f h w", f=video_length)
-
+        x = F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        x = rearrange(x, "(b f) c h w -> b c f h w", f=frames)
         return x
 
 
@@ -35,7 +34,6 @@ class Upsample3D(nn.Module):
         self.use_conv_transpose = use_conv_transpose
         self.name = name
 
-        conv = None
         if use_conv_transpose:
             raise NotImplementedError
         elif use_conv:
@@ -67,11 +65,6 @@ class Upsample3D(nn.Module):
         if dtype == torch.bfloat16:
             hidden_states = hidden_states.to(dtype)
 
-        # if self.use_conv:
-        #     if self.name == "conv":
-        #         hidden_states = self.conv(hidden_states)
-        #     else:
-        #         hidden_states = self.Conv2d_0(hidden_states)
         hidden_states = self.conv(hidden_states)
 
         return hidden_states
@@ -141,7 +134,7 @@ class ResnetBlock3D(nn.Module):
         if groups_out is None:
             groups_out = groups
 
-        self.norm1 = torch.nn.GroupNorm(num_groups=groups, num_channels=in_channels, eps=eps, affine=True)
+        self.norm1 = nn.GroupNorm(num_groups=groups, num_channels=in_channels, eps=eps, affine=True)
 
         self.conv1 = InflatedConv3d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
@@ -153,14 +146,12 @@ class ResnetBlock3D(nn.Module):
             else:
                 raise ValueError(f"unknown time_embedding_norm : {self.time_embedding_norm} ")
 
-            self.time_emb_proj = torch.nn.Linear(temb_channels, time_emb_proj_out_channels)
+            self.time_emb_proj = nn.Linear(temb_channels, time_emb_proj_out_channels)
         else:
             self.time_emb_proj = None
 
-        self.norm2 = torch.nn.GroupNorm(
-            num_groups=groups_out, num_channels=out_channels, eps=eps, affine=True
-        )
-        self.dropout = torch.nn.Dropout(dropout)
+        self.norm2 = nn.GroupNorm(num_groups=groups_out, num_channels=out_channels, eps=eps, affine=True)
+        self.dropout = nn.Dropout(dropout)
         self.conv2 = InflatedConv3d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
         if non_linearity == "swish":
@@ -211,6 +202,6 @@ class ResnetBlock3D(nn.Module):
         return output_tensor
 
 
-class Mish(torch.nn.Module):
+class Mish(nn.Module):
     def forward(self, hidden_states):
         return hidden_states * torch.tanh(torch.nn.functional.softplus(hidden_states))

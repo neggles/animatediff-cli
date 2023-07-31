@@ -16,7 +16,7 @@ from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import get_checkpoint_weights
-from animatediff.utils.util import path_from_cwd, save_video
+from animatediff.utils.util import save_video
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,9 @@ def create_pipeline(
     # make sure motion_module is a Path and exists
     motion_module = data_dir.joinpath(model_config.motion_module)
     if not (motion_module.exists() and motion_module.is_file()):
-        raise FileNotFoundError(f"motion_module {motion_module} does not exist or is not a file")
+        motion_module = motion_module.with_suffix(".safetensors")
+        if not (motion_module.exists() and motion_module.is_file()):
+            raise FileNotFoundError(f"motion_module {motion_module} does not exist or is not a file")
 
     logger.info("Loading base model...")
     tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
