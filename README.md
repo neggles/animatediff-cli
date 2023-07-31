@@ -38,7 +38,7 @@ animatediff --help
 From here you'll need to put whatever checkpoint you want to use into `data/models/sd`, copy
 one of the prompt configs in `config/prompts`, edit it with your choices of prompt and model (model
 paths in prompt .json files are **relative to `data/`**, e.g. `models/sd/vanilla.safetensors`), and
-off you go. There may be some issues with `k_dpm`, at the moment, try using `k_dpmpp` or `ddim`.
+off you go.
 
 Then it's something like (for an 8GB card):
 ```sh

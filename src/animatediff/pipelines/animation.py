@@ -34,6 +34,7 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.context import get_context_scheduler, get_total_steps
+from animatediff.utils.model import nop_train
 
 logger = logging.getLogger(__name__)
 
@@ -491,7 +492,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         width = width or self.unet.config.sample_size * self.vae_scale_factor
 
         # 16 frames is max reliable number for one-shot mode, so we use sequential mode for longer videos
-        sequential_mode = video_length is not None and video_length > 16
+        sequential_mode = video_length is not None and video_length > 48
 
         # 1. Check inputs. Raise error if not correct
         self.check_inputs(
@@ -506,6 +507,8 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             batch_size = len(prompt)
 
         device = self._execution_device
+        latents_device = torch.device("cpu") if sequential_mode else device
+
         # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
@@ -527,7 +530,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         )
 
         # 4. Prepare timesteps
-        self.scheduler.set_timesteps(num_inference_steps, device=device)
+        self.scheduler.set_timesteps(num_inference_steps, device=latents_device)
         timesteps = self.scheduler.timesteps
 
         # 5. Prepare latent variables
@@ -539,7 +542,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             height,
             width,
             prompt_embeds.dtype,
-            torch.device("cpu") if sequential_mode else device,  # keep latents on cpu for sequential mode
+            latents_device,  # keep latents on cpu for sequential mode
             generator,
             latents,
         )
@@ -603,9 +606,9 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents = self.scheduler.step(
-                    noise_pred,
-                    t,
-                    latents,
+                    model_output=noise_pred,
+                    timestep=t,
+                    sample=latents.to(latents_device),
                     **extra_step_kwargs,
                     return_dict=False,
                 )[0]
@@ -650,3 +653,12 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             return tqdm(total=total, **self._progress_bar_config)
         else:
             raise ValueError("Either `total` or `iterable` has to be defined.")
+
+    def freeze(self):
+        logger.debug("Freezing pipeline...")
+        self.unet = self.unet.eval().requires_grad_(False)
+        self.unet.train = nop_train
+        self.text_encoder = self.text_encoder.eval().requires_grad_(False)
+        self.text_encoder.train = nop_train
+        self.vae = self.vae.eval().requires_grad_(False)
+        self.vae.train = nop_train
