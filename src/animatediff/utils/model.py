@@ -182,7 +182,8 @@ def get_motion_modules(
                 local_dir_use_symlinks=False,
                 resume_download=True,
             )
-            logger.debug(f"Downloaded {path_from_cwd(result)}")
+            path = Path(result)
+            logger.debug(f"Downloaded {path_from_cwd(path)}")
 
 
 def get_base_model(model_name_or_path: str, local_dir: Path, force: bool = False):
