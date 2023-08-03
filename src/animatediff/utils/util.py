@@ -39,5 +39,6 @@ def save_video(video: Tensor, save_path: PathLike, fps: int = 8):
     )
 
 
-def path_from_cwd(path: Path) -> str:
+def path_from_cwd(path: PathLike) -> str:
+    path = Path(path)
     return str(path.absolute().relative_to(Path.cwd()))
