@@ -397,7 +397,7 @@ def generate(
     if save_merged:
         logger.info("Output merged output video...")
         merged_output = torch.concat(outputs, dim=0)
-        save_video(merged_output, save_dir.joinpath("final.gif"), n_rows=num_prompts)
+        save_video(merged_output, save_dir.joinpath("final.gif"))  # , n_rows=num_prompts
 
     logger.info("Done, exiting...")
     exit(0)
