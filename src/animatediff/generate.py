@@ -10,12 +10,11 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
-from animatediff.pipelines.animation import AnimationPipeline
-from animatediff.pipelines.ti import get_text_embeddings
+from animatediff.pipelines import AnimationPipeline, get_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
-from animatediff.utils.model import get_checkpoint_weights
+from animatediff.utils.model import ensure_motion_modules, get_checkpoint_weights
 from animatediff.utils.util import save_video
 
 logger = logging.getLogger(__name__)
@@ -36,16 +35,25 @@ def create_pipeline(
     Uses the base_model argument to load or download the pretrained reference pipeline model."""
 
     # make sure motion_module is a Path and exists
+    logger.info("Checking motion module...")
     motion_module = data_dir.joinpath(model_config.motion_module)
     if not (motion_module.exists() and motion_module.is_file()):
+        # check for safetensors version
         motion_module = motion_module.with_suffix(".safetensors")
         if not (motion_module.exists() and motion_module.is_file()):
-            raise FileNotFoundError(f"motion_module {motion_module} does not exist or is not a file")
+            # download from HuggingFace Hub if not found
+            ensure_motion_modules()
+        if not (motion_module.exists() and motion_module.is_file()):
+            # this should never happen, but just in case...
+            raise FileNotFoundError(f"Motion module {motion_module} does not exist or is not a file!")
 
-    logger.info("Loading base model...")
+    logger.info("Loading tokenizer...")
     tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
+    logger.info("Loading text encoder...")
     text_encoder: CLIPTextModel = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
+    logger.info("Loading VAE...")
     vae: AutoencoderKL = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
+    logger.info("Loading UNet...")
     unet: UNet3DConditionModel = UNet3DConditionModel.from_pretrained_2d(
         pretrained_model_path=base_model,
         motion_module_path=motion_module,

@@ -6,11 +6,11 @@ from typing import Annotated, Optional
 import torch
 import typer
 from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
-from einops._torch_specific import allow_ops_in_compiled_graph
 from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import create_pipeline, run_inference
+from animatediff.pipelines.animation import AnimationPipeline
 from animatediff.settings import (
     CKPT_EXTENSIONS,
     InferenceConfig,
@@ -18,8 +18,8 @@ from animatediff.settings import (
     get_infer_config,
     get_model_config,
 )
-from animatediff.utils.device import device_info_str, model_dtype
-from animatediff.utils.model import checkpoint_to_pipeline, get_base_model, get_motion_modules
+from animatediff.utils.model import checkpoint_to_pipeline, get_base_model
+from animatediff.utils.pipeline import get_context_params, send_to_device
 from animatediff.utils.util import path_from_cwd, save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
@@ -51,6 +51,10 @@ try:
 except ImportError:
     logger.debug("RIFE not available, skipping...", exc_info=True)
     rife_app = None
+
+# mildly cursed globals to allow for reuse of the pipeline if we're being called as a module
+pipeline: Optional[AnimationPipeline] = None
+last_model_path: Optional[Path] = None
 
 
 def version_callback(value: bool):
@@ -236,74 +240,23 @@ def generate(
     Do the thing. Make the animation happen. Waow.
     """
 
-    if context is None:
-        context = min(length, 16)
-    if overlap is None:
-        overlap = context // 2
-    if stride is None:
-        stride = 4
+    # be quiet, diffusers. we care not for your safety checker
+    set_diffusers_verbosity_error()
 
     config_path = config_path.absolute()
     logger.info(f"Using generation config: {path_from_cwd(config_path)}")
     model_config: ModelConfig = get_model_config(config_path)
     infer_config: InferenceConfig = get_infer_config()
 
-    # bluh bluh safety checker
-    set_diffusers_verbosity_error()
+    # set sane defaults for context, overlap, and stride if not supplied
+    context, overlap, stride = get_context_params(length, context, overlap, stride)
 
+    # turn the device string into a torch.device
     device: torch.device = torch.device(device)
-    use_channels_last = False
-    if device.type == "cpu":
-        logger.warn("Device explicitly set to CPU, will run everything in fp32")
-        logger.warn("This is likely to be *incredibly* slow, but I don't tell you how to live.")
-        if use_xformers:
-            logger.error("XFormers is not supported on CPU! Disabling it and continuing...")
-            use_xformers = False
-    elif device.type == "cuda":
-        if torch.cuda.is_available():
-            logger.info("CUDA is available, will use mixed-precision inference")
-            device_info = torch.cuda.get_device_properties(device)
-            if device_info.major >= 8:
-                use_channels_last = True  # Ampere and newer support channels last and it's faster
-            logger.info(f"Using device: {device_info_str(device_info)}")
-        else:
-            logger.critical("CUDA is not available but device is set to CUDA! Exiting...")
-            raise RuntimeError("CUDA is not available but device is set to CUDA!")
-    else:
-        logger.info(f"Using non-CUDA device: {device.type}{device.index if device.index is not None else ''}")
-        if use_xformers:
-            logger.warn("XFormers may or may not work on this device! Will try anyway...")
-
-    # get dtypes for each model, based on the device we're using.
-    unet_dtype = model_dtype("unet", device)  # fp16 unless on CPU
-    tenc_dtype = model_dtype("tenc", device)  # fp16 unless on CPU
-    vae_dtype = model_dtype("vae", device)  # bfloat16 if available, otherwise fp32
-
-    if device.type == "cpu" and force_half_vae:
-        logger.critical("Can't force VAE to fp16 mode on CPU! Exiting...")
-        raise RuntimeError("Can't force VAE to fp16 mode on CPU!")
-
-    has_bfloat16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
-    if force_half_vae:
-        # you probably shouldn't do this, but I'm not your mom
-        if has_bfloat16:
-            logger.warn("Forcing VAE to use fp16 despite bfloat16 support! This is a bad idea!")
-            logger.warn("If you're not sure why you're doing this, you probably shouldn't be.")
-            vae_dtype = torch.float16
-        else:
-            logger.warn("Forcing VAE to use fp16 instead of fp32 on CUDA! This may result in black outputs!")
-            logger.warn("Running a VAE in fp16 can result in black images or poor output quality.")
-            logger.warn("I don't tell you how to live, but you probably shouldn't do this.")
-            vae_dtype = torch.float16
-
-    logger.info(f"Selected data types: {unet_dtype=}, {tenc_dtype=}, {vae_dtype=}")
 
     # Get the base model if we don't have it already
     logger.info(f"Using base model: {model_name_or_path}")
-    model_name_or_path = get_base_model(model_name_or_path, local_dir=get_dir("data/models/huggingface"))
-
-    # Ensure we have the motion modules
-    get_motion_modules()
+    base_model_path: Path = get_base_model(model_name_or_path, local_dir=get_dir("data/models/huggingface"))
 
     # get a timestamp for the output directory
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -313,28 +266,24 @@ def generate(
     logger.info(f"Will save outputs to ./{path_from_cwd(save_dir)}")
 
     # beware the pipeline
-    pipeline = create_pipeline(
-        base_model=model_name_or_path,
-        model_config=model_config,
-        infer_config=infer_config,
-        use_xformers=use_xformers,
-    )
-    logger.info(f"Sending pipeline to device \"{device.type}{device.index if device.index else ''}\"")
-    if use_channels_last:
-        logger.debug("Using channels last memory format for UNet")
-        pipeline.unet = pipeline.unet.to(memory_format=torch.channels_last)
-    pipeline.unet = pipeline.unet.to(device=device, dtype=unet_dtype)
-    pipeline.text_encoder = pipeline.text_encoder.to(device=device, dtype=tenc_dtype)
-    pipeline.vae = pipeline.vae.to(device=device, dtype=vae_dtype)
+    global pipeline
+    global last_model_path
+    if pipeline is None or last_model_path != model_config.base.resolve():
+        pipeline = create_pipeline(
+            base_model=base_model_path,
+            model_config=model_config,
+            infer_config=infer_config,
+            use_xformers=use_xformers,
+        )
+        last_model_path = model_config.base.resolve()
+    else:
+        logger.info("Pipeline already loaded, skipping initialization")
 
-    # Compile model if enabled
-    if model_config.compile:
-        allow_ops_in_compiled_graph()  # make einops behave
-        logger.info("Compiling model with TorchDynamo. This may take a while...")
-        pipeline.freeze()
-        pipeline.unet = torch.compile(
-            pipeline.unet,
-            mode="reduce-overhead",
+    if pipeline.device == device:
+        logger.info("Pipeline already on the correct device, skipping device transfer")
+    else:
+        pipeline = send_to_device(
+            pipeline, device, freeze=True, force_half=force_half_vae, compile=model_config.compile
         )
 
     # save config to output directory
@@ -397,10 +346,12 @@ def generate(
     if save_merged:
         logger.info("Output merged output video...")
         merged_output = torch.concat(outputs, dim=0)
-        save_video(merged_output, save_dir.joinpath("final.gif"))  # , n_rows=num_prompts
+        save_video(merged_output, save_dir.joinpath("final.gif"))
 
     logger.info("Done, exiting...")
-    exit(0)
+    cli.info
+
+    return save_dir
 
 
 @cli.command()
