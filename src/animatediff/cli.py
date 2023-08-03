@@ -152,6 +152,18 @@ def generate(
             rich_help_panel="Generation",
         ),
     ] = None,
+    repeats: Annotated[
+        int,
+        typer.Option(
+            "--repeats",
+            "-r",
+            min=1,
+            max=99,
+            help="Number of times to repeat the prompt (default: 1)",
+            show_default=False,
+            rich_help_panel="Generation",
+        ),
+    ] = 1,
     device: Annotated[
         str,
         typer.Option(
@@ -331,40 +343,55 @@ def generate(
     save_config_path.write_text(model_config.json(), encoding="utf-8")
 
     num_prompts = len(model_config.prompt)
+    num_negatives = len(model_config.n_prompt)
+    num_seeds = len(model_config.seed)
+    gen_total = num_prompts * repeats  # total number of generations
+
     logger.info("Initialization complete!")
-    logger.info(f"Generating {num_prompts} animations:")
+    logger.info(f"Generating {gen_total} animations from {num_prompts} prompts")
     outputs = []
-    for idx, prompt in enumerate(model_config.prompt):
-        logger.info(f"Running prompt {idx + 1} of {num_prompts}")
-        n_prompt = model_config.n_prompt[idx] if len(model_config.n_prompt) > 1 else model_config.n_prompt[0]
-        seed = seed = model_config.seed[idx] if len(model_config.seed) > 1 else model_config.seed[0]
 
-        # duplicated in run_inference, but this lets us use it for frame save dirs
-        # TODO: Move gif Output out of run_inference...
-        if seed == -1:
-            seed = torch.seed()
-        logger.info(f"Generation seed: {seed}")
+    gen_num = 0  # global generation index
+    # repeat the prompts if we're doing multiple runs
+    for _ in range(repeats):
+        for prompt in model_config.prompt:
+            # get the index of the prompt, negative, and seed
+            idx = gen_num % num_prompts
+            logger.info(f"Running generation {gen_num + 1} of {gen_total} (prompt {idx + 1})")
 
-        output = run_inference(
-            pipeline=pipeline,
-            prompt=prompt,
-            n_prompt=n_prompt,
-            seed=seed,
-            steps=model_config.steps,
-            guidance_scale=model_config.guidance_scale,
-            width=width,
-            height=height,
-            duration=length,
-            idx=idx,
-            out_dir=save_dir,
-            context_frames=context,
-            context_overlap=overlap,
-            context_stride=stride,
-        )
-        outputs.append(output)
-        torch.cuda.empty_cache()
-        if no_frames is not True:
-            save_frames(output, save_dir.joinpath(f"{idx:02d}-{seed}"))
+            # allow for reusing the same negative prompt(s) and seed(s) for multiple prompts
+            n_prompt = model_config.n_prompt[idx % num_negatives]
+            seed = seed = model_config.seed[idx % num_seeds]
+
+            # duplicated in run_inference, but this lets us use it for frame save dirs
+            # TODO: Move gif Output out of run_inference...
+            if seed == -1:
+                seed = torch.seed()
+            logger.info(f"Generation seed: {seed}")
+
+            output = run_inference(
+                pipeline=pipeline,
+                prompt=prompt,
+                n_prompt=n_prompt,
+                seed=seed,
+                steps=model_config.steps,
+                guidance_scale=model_config.guidance_scale,
+                width=width,
+                height=height,
+                duration=length,
+                idx=gen_num,
+                out_dir=save_dir,
+                context_frames=context,
+                context_overlap=overlap,
+                context_stride=stride,
+            )
+            outputs.append(output)
+            torch.cuda.empty_cache()
+            if no_frames is not True:
+                save_frames(output, save_dir.joinpath(f"{gen_num:02d}-{seed}"))
+
+            # increment the generation number
+            gen_num += 1
 
     logger.info("Generation complete!")
     if save_merged:
