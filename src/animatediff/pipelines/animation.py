@@ -657,9 +657,14 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
 
     def freeze(self):
         logger.debug("Freezing pipeline...")
-        self.unet = self.unet.eval().requires_grad_(False)
+        _ = self.unet.eval()
+        self.unet = self.unet.requires_grad_(False)
         self.unet.train = nop_train
-        self.text_encoder = self.text_encoder.eval().requires_grad_(False)
+
+        _ = self.text_encoder.eval()
+        self.text_encoder = self.text_encoder.requires_grad_(False)
         self.text_encoder.train = nop_train
-        self.vae = self.vae.eval().requires_grad_(False)
+
+        _ = self.vae.eval()
+        self.vae = self.vae.requires_grad_(False)
         self.vae.train = nop_train
