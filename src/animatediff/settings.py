@@ -14,7 +14,7 @@ from pydantic.env_settings import (
 )
 
 from animatediff import get_dir
-from animatediff.schedulers import AnimateDiffusionScheduler
+from animatediff.schedulers import DiffusionScheduler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class ModelConfig(BaseSettings):
     motion_module: Path = Field(...)  # Path to the motion module
     compile: bool = Field(False)  # whether to compile the model with TorchDynamo
     seed: list[int] = Field([])  # Seed(s) for the random number generators
-    scheduler: AnimateDiffusionScheduler = Field(AnimateDiffusionScheduler.k_dpmpp)  # Scheduler to use
+    scheduler: DiffusionScheduler = Field(DiffusionScheduler.k_dpmpp_2m)  # Scheduler to use
     steps: int = 25  # Number of inference steps to run
     guidance_scale: float = 7.5  # CFG scale to use
     prompt: list[str] = Field([])  # Prompt(s) to use
