@@ -140,6 +140,7 @@ def run_inference(
     context_stride: int = 3,
     context_overlap: int = 4,
     context_schedule: str = "uniform",
+    clip_skip: int = 1,
     return_dict: bool = False,
 ):
     out_dir = Path(out_dir)  # ensure out_dir is a Path
@@ -162,6 +163,7 @@ def run_inference(
         context_stride=context_stride + 1,
         context_overlap=context_overlap,
         context_schedule=context_schedule,
+        clip_skip=clip_skip,
     )
     logger.info("Generation complete, saving...")
 

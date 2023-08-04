@@ -490,6 +490,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         context_stride: int = 3,
         context_overlap: int = 4,
         context_schedule: str = "uniform",
+        clip_skip: int = 1,
         **kwargs,
     ):
         # Default height and width to unet
@@ -532,6 +533,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             prompt_embeds=prompt_embeds,
             negative_prompt_embeds=negative_prompt_embeds,
             lora_scale=text_encoder_lora_scale,
+            clip_skip=clip_skip,
         )
 
         # 4. Prepare timesteps

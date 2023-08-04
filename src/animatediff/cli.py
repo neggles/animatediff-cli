@@ -336,6 +336,7 @@ def generate(
                 context_frames=context,
                 context_overlap=overlap,
                 context_stride=stride,
+                clip_skip=model_config.clip_skip,
             )
             outputs.append(output)
             torch.cuda.empty_cache()
