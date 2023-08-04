@@ -76,13 +76,19 @@ Seems to work pretty well...
 In no particular order:
 
 - [x] Infinite generation length support
-- [x] RIFE support
-- [ ] Automatic generate-then-interpolate mode
-- [x] Torch SDP Attention (make xformers optional)
-- [ ] Add a webUI
+- [x] RIFE support for motion interpolation (`rife-ncnn-vulkan` isn't the greatest implementation)
+- [x] Export RIFE interpolated frames to a video file (webm, mp4, animated webp, hevc mp4, gif, etc.)
+- [x] Generate infinite length animations on a 6-8GB card (at 512x512 with 8-frame context, but hey it'll do)
+- [x] Torch SDP Attention (makes xformers optional)
+- [x] Support for `clip_skip` in prompt config
+- [x] Experimental support for `torch.compile()` (upstream Diffusers bugs slow this down a little but it's still zippy)
+- [x] Batch your generations with `--repeat`! (e.g. `--repeat 10` will repeat all your prompts 10 times)
+- [x] Call the `animatediff.cli.generate()` function from another Python program without reloading the model every time
+- [x] Drag remaining old Diffusers code up to latest (mostly)
+- [ ] Add a webUI (maybe, there are people wrapping this already so maybe not?)
 - [ ] img2img support (start from an existing image and continue)
-- [ ] Drag remaining old Diffusers code up to latest
-- [ ] Stop using custom modules where possible (should be able to use Diffusers for all of it)
+- [ ] Stop using custom modules where possible (should be able to use Diffusers for almost all of it)
+- [ ] Automatic generate-then-interpolate-with-RIFE mode
 
 ## Credits:
 
