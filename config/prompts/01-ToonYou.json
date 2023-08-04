@@ -3,13 +3,15 @@
   "base": "",
   "path": "models/sd/toonyou_beta3.safetensors",
   "motion_module": "models/motion-module/mm_sd_v15.ckpt",
+  "compile": false,
   "seed": [
     10788741199826055000, 6520604954829637000, 6519455744612556000,
     16372571278361864000
   ],
   "scheduler": "k_dpmpp",
-  "steps": 25,
-  "guidance_scale": 7.5,
+  "steps": 30,
+  "guidance_scale": 8.5,
+  "clip_skip": 2,
   "prompt": [
     "1girl, solo, best quality, masterpiece, looking at viewer, purple hair, orange hair, gradient hair, blurry background, upper body, dress, flower print, spaghetti strap, bare shoulders",
     "1girl, solo, masterpiece, best quality, cherry blossoms, hanami, pink flower, white flower, spring season, wisteria, petals, flower, plum blossoms, outdoors, falling petals, white hair, black eyes,",

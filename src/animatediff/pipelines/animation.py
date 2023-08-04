@@ -30,8 +30,9 @@ from diffusers.utils import (
 from einops import rearrange
 from packaging import version
 from tqdm.rich import tqdm
-from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
+from transformers import CLIPImageProcessor, CLIPTokenizer
 
+from animatediff.models.clip import CLIPSkipTextModel
 from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines.context import get_context_scheduler, get_total_steps
 from animatediff.utils.model import nop_train
@@ -48,7 +49,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     _optional_components = ["feature_extractor"]
 
     vae: AutoencoderKL
-    text_encoder: CLIPTextModel
+    text_encoder: CLIPSkipTextModel
     tokenizer: CLIPTokenizer
     unet: UNet3DConditionModel
     feature_extractor: CLIPImageProcessor
@@ -64,7 +65,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     def __init__(
         self,
         vae: AutoencoderKL,
-        text_encoder: CLIPTextModel,
+        text_encoder: CLIPSkipTextModel,
         tokenizer: CLIPTokenizer,
         unet: UNet3DConditionModel,
         scheduler: Union[
@@ -226,6 +227,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         prompt_embeds: Optional[torch.FloatTensor] = None,
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
         lora_scale: Optional[float] = None,
+        clip_skip: int = 1,
     ):
         # set lora scale so that monkey patched LoRA
         # function of text encoder can correctly access it
@@ -271,6 +273,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             prompt_embeds = self.text_encoder(
                 text_input_ids.to(device),
                 attention_mask=attention_mask,
+                clip_skip=clip_skip,
             )
             prompt_embeds = prompt_embeds[0]
 
@@ -312,6 +315,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                 truncation=True,
                 return_tensors="pt",
             )
+            uncond_input_ids = uncond_input.input_ids
 
             if (
                 hasattr(self.text_encoder.config, "use_attention_mask")
@@ -322,8 +326,9 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                 attention_mask = None
 
             negative_prompt_embeds = self.text_encoder(
-                uncond_input.input_ids.to(device),
+                uncond_input_ids.to(device),
                 attention_mask=attention_mask,
+                clip_skip=clip_skip,
             )
             negative_prompt_embeds = negative_prompt_embeds[0]
 

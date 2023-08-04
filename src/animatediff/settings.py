@@ -106,6 +106,7 @@ class ModelConfig(BaseSettings):
     scheduler: DiffusionScheduler = Field(DiffusionScheduler.k_dpmpp_2m)  # Scheduler to use
     steps: int = 25  # Number of inference steps to run
     guidance_scale: float = 7.5  # CFG scale to use
+    clip_skip: int = 1  # skip the last N-1 layers of the CLIP text encoder
     prompt: list[str] = Field([])  # Prompt(s) to use
     n_prompt: list[str] = Field([])  # Anti-prompt(s) to use
 
