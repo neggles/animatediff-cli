@@ -8,7 +8,7 @@ except ImportError:
     version_tuple = (0, 0, "unknown", "noinfo")
 
 from functools import lru_cache
-from os import environ
+from os import getenv
 from pathlib import Path
 from warnings import filterwarnings
 
@@ -18,8 +18,8 @@ from tqdm import TqdmExperimentalWarning
 PACKAGE = __package__.replace("_", "-")
 PACKAGE_ROOT = Path(__file__).parent.parent
 
-HF_HOME = Path(environ.get("HF_HOME", "~/.cache/huggingface"))
-HF_HUB_CACHE = Path(environ.get("HUGGINGFACE_HUB_CACHE", HF_HOME.joinpath("hub")))
+HF_HOME = Path(getenv("HF_HOME", "~/.cache/huggingface"))
+HF_HUB_CACHE = Path(getenv("HUGGINGFACE_HUB_CACHE", HF_HOME.joinpath("hub")))
 
 HF_LIB_NAME = "animatediff-cli"
 HF_LIB_VER = __version__
