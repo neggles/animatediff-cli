@@ -7,6 +7,7 @@ from safetensors.torch import load_file
 from torch import Tensor
 
 from animatediff import get_dir
+from animatediff.pipelines.animation import AnimationPipeline
 
 EMBED_DIR = get_dir("data").joinpath("embeddings")
 EMBED_EXTS = [".pt", ".pth", ".bin", ".safetensors"]
@@ -41,7 +42,7 @@ def get_text_embeddings(return_tensors: bool = True) -> dict[str, Union[Tensor, 
     # we can optionally return the tensors instead of the paths
     if return_tensors:
         # load the embeddings
-        embeds = {k: load_embedding(v) for k, v in embeds.items()}
+        embeds = {k: load_embed_weights(v) for k, v in embeds.items()}
         # filter out the ones that failed to load
         loaded_embeds = {k: v for k, v in embeds.items() if v is not None}
         if len(loaded_embeds) != len(embeds):
@@ -52,7 +53,7 @@ def get_text_embeddings(return_tensors: bool = True) -> dict[str, Union[Tensor, 
     return embeds
 
 
-def load_embedding(path: Path, key: Optional[str] = None) -> Optional[Tensor]:
+def load_embed_weights(path: Path, key: Optional[str] = None) -> Optional[Tensor]:
     """Load an embedding from a file.
     Accepts an optional key to load a specific embedding from a file with multiple embeddings, otherwise
     it will try to load the first one it finds.
@@ -89,3 +90,36 @@ def load_embedding(path: Path, key: Optional[str] = None) -> Optional[Tensor]:
                 break
 
     return embedding
+
+
+def load_text_embeddings(
+    pipeline: AnimationPipeline, text_embeds: Optional[tuple[str, torch.Tensor]] = None
+) -> None:
+    if text_embeds is None:
+        text_embeds = get_text_embeddings()
+    if len(text_embeds) < 1:
+        logger.info("No TI embeddings found")
+        return
+
+    logger.info(f"Loading {len(text_embeds)} TI embeddings...")
+    loaded, skipped, failed = [], [], []
+
+    vocab = pipeline.tokenizer.get_vocab()  # get the tokenizer vocab so we can skip loaded embeddings
+    for token, embed in text_embeds.items():
+        try:
+            if token not in vocab:
+                pipeline.load_textual_inversion({token: embed})
+                logger.debug(f"Loaded embedding '{token}'")
+                loaded.append(token)
+            else:
+                logger.debug(f"Skipping embedding '{token}' (already loaded)")
+                skipped.append(token)
+        except Exception:
+            logger.error(f"Failed to load TI embedding: {token}", exc_info=True)
+            failed.append(token)
+    # Print a summary of what we loaded
+    logger.info(f"Loaded {len(loaded)} embeddings, {len(skipped)} existing, {len(failed)} failed")
+    logger.info(f"Available embeddings: {', '.join(loaded + skipped)}")
+    if len(failed) > 0:
+        # only print failed if there were failures
+        logger.warn(f"Failed to load embeddings: {', '.join(failed)}")

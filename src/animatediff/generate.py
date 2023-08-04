@@ -10,7 +10,7 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.unet import UNet3DConditionModel
-from animatediff.pipelines import AnimationPipeline, get_text_embeddings
+from animatediff.pipelines import AnimationPipeline, load_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
@@ -118,17 +118,7 @@ def create_pipeline(
     )
 
     # Load TI embeddings
-    text_embeds = get_text_embeddings()
-    if len(text_embeds) > 0:
-        logger.info(f"Loading {len(text_embeds)} TI embeddings...")
-        for token, embed in text_embeds.items():
-            try:
-                pipeline.load_textual_inversion({token: embed})
-            except Exception as e:
-                logger.error(f"Failed to load TI embedding: {token}", exc_info=True)
-                raise e
-    else:
-        logger.info("No TI embeddings found")
+    load_text_embeddings(pipeline)
 
     return pipeline
 

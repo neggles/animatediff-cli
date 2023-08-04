@@ -10,7 +10,7 @@ from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import create_pipeline, run_inference
-from animatediff.pipelines.animation import AnimationPipeline
+from animatediff.pipelines import AnimationPipeline, load_text_embeddings
 from animatediff.settings import (
     CKPT_EXTENSIONS,
     InferenceConfig,
@@ -278,6 +278,9 @@ def generate(
         last_model_path = model_config.base.resolve()
     else:
         logger.info("Pipeline already loaded, skipping initialization")
+        # reload TIs; create_pipeline does this for us, but they may have changed
+        # since load time if we're being called from another package
+        load_text_embeddings(pipeline)
 
     if pipeline.device == device:
         logger.info("Pipeline already on the correct device, skipping device transfer")

@@ -5,7 +5,7 @@ import torch
 import torch._dynamo as dynamo
 from einops._torch_specific import allow_ops_in_compiled_graph
 
-from animatediff.pipelines.animation import AnimationPipeline
+from animatediff.pipelines import AnimationPipeline
 from animatediff.utils.device import get_memory_format, get_model_dtypes
 from animatediff.utils.model import nop_train
 
