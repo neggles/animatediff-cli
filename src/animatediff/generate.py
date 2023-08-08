@@ -172,7 +172,8 @@ def run_inference(
     prompt_str = "_".join((prompt_tags[:6]))
 
     # generate the output filename and save the video
-    out_file = out_dir.joinpath(f"{idx:02d}_{seed}_{prompt_str}.gif")
+    out_str = f"{idx:02d}_{seed}_{prompt_str}"[:251]
+    out_file = out_dir.joinpath(f"{out_str}.gif")
     if return_dict is True:
         save_video(pipeline_output["videos"], out_file)
     else:
