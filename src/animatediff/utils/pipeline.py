@@ -43,6 +43,7 @@ def send_to_device(
             logger.warn("Model compilation is experimental and may not work as expected!")
             pipeline.unet = torch.compile(
                 pipeline.unet,
+                fullgraph=True,
                 backend="inductor",
                 mode="reduce-overhead",
             )
