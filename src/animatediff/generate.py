@@ -6,7 +6,7 @@ from typing import Union
 
 import torch
 from diffusers import AutoencoderKL, StableDiffusionPipeline
-from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
+from transformers import CLIPImageProcessor, CLIPTokenizer
 
 from animatediff import get_dir
 from animatediff.models.clip import CLIPSkipTextModel

@@ -239,3 +239,6 @@ src/animatediff/_version.py
 # envrc
 .env*
 !.envrc.example
+
+# torch compile debug logs
+/torch_compile_debug/
