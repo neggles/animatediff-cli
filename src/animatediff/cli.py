@@ -37,7 +37,11 @@ logging.basicConfig(
     format="%(message)s",
     datefmt="%H:%M:%S",
     handlers=[
-        RichHandler(console=console, rich_tracebacks=True),
+        RichHandler(
+            console=console,
+            rich_tracebacks=True,
+            omit_repeated_times=False,
+        ),
     ],
     force=True,
 )
