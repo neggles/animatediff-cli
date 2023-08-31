@@ -150,21 +150,22 @@ def run_inference(
     else:
         seed = torch.seed()
 
-    pipeline_output = pipeline(
-        prompt=prompt,
-        negative_prompt=n_prompt,
-        num_inference_steps=steps,
-        guidance_scale=guidance_scale,
-        width=width,
-        height=height,
-        video_length=duration,
-        return_dict=return_dict,
-        context_frames=context_frames,
-        context_stride=context_stride + 1,
-        context_overlap=context_overlap,
-        context_schedule=context_schedule,
-        clip_skip=clip_skip,
-    )
+    with torch.inference_mode(True):
+        pipeline_output = pipeline(
+            prompt=prompt,
+            negative_prompt=n_prompt,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            width=width,
+            height=height,
+            video_length=duration,
+            return_dict=return_dict,
+            context_frames=context_frames,
+            context_stride=context_stride + 1,
+            context_overlap=context_overlap,
+            context_schedule=context_schedule,
+            clip_skip=clip_skip,
+        )
     logger.info("Generation complete, saving...")
 
     # Trim and clean up the prompt for filename use
