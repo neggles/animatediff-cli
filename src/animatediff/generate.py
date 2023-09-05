@@ -70,8 +70,17 @@ def create_pipeline(
 
     # Load the checkpoint weights into the pipeline
     if model_config.path is not None:
-        model_path = data_dir.joinpath(model_config.path)
-        logger.info(f"Loading weights from {model_path}")
+        # Resolve the input model path
+        model_path = Path(model_config.path).resolve()
+        if model_path.exists():
+            # if the absolute model path exists, use it unmodified
+            logger.info(f"Loading weights from {model_path}")
+        else:
+            # otherwise search for the model path relative to the data directory
+            model_path = data_dir.joinpath(model_config.path).resolve()
+            logger.info(f"Loading weights from {model_path}")
+
+        # Identify whether we have a checkpoint or a HF data dir and load appropriately
         if model_path.is_file():
             logger.debug("Loading from single checkpoint file")
             unet_state_dict, tenc_state_dict, vae_state_dict = get_checkpoint_weights(model_path)
