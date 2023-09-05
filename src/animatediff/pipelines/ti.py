@@ -8,6 +8,7 @@ from torch import Tensor
 
 from animatediff import get_dir
 from animatediff.pipelines.animation import AnimationPipeline
+from animatediff.utils.util import relative_path
 
 EMBED_DIR = get_dir("data").joinpath("embeddings")
 EMBED_EXTS = [".pt", ".pth", ".bin", ".safetensors"]
@@ -26,17 +27,17 @@ def get_text_embeddings(return_tensors: bool = True) -> dict[str, Union[Tensor, 
     for path in scan_text_embeddings():
         if path.stem not in embeds:
             # new token/name, add it
-            logger.debug(f"Found embedding token {path.stem} at {path.relative_to(EMBED_DIR)}")
+            logger.debug(f"Found embedding token {path.stem} at {relative_path(path, EMBED_DIR)}")
             embeds[path.stem] = path
         else:
             # duplicate token/name, skip it
             skipped[path.stem] = path
-            logger.debug(f"Duplicate embedding token {path.stem} at {path.relative_to(EMBED_DIR)}")
+            logger.debug(f"Duplicate embedding token {path.stem} at {relative_path(path, EMBED_DIR)}")
 
     # warn the user if there are duplicates we skipped
     if skipped:
         logger.warn(f"Skipped {len(skipped)} embeddings with duplicate tokens!")
-        logger.warn(f"Skipped paths: {[x.relative_to(EMBED_DIR) for x in skipped.values()]}")
+        logger.warn(f"Skipped paths: {[relative_path(x, EMBED_DIR) for x in skipped.values()]}")
         logger.warn("Rename these files to avoid collisions!")
 
     # we can optionally return the tensors instead of the paths

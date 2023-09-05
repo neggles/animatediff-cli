@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 import typer
 
 from animatediff import get_dir
+from animatediff.utils.util import relative_path
 
 from .ffmpeg import FfmpegEncoder, VideoCodec, codec_extn
 from .ncnn import RifeNCNNOptions
@@ -140,6 +141,6 @@ def interpolate(
 
     logger.debug(f"ffmpeg result: {result}")
 
-    logger.info(f"Find the RIFE frames at: {rife_frames_dir.absolute().relative_to(Path.cwd())}")
-    logger.info(f"Find the output file at: {out_file.absolute().relative_to(Path.cwd())}")
+    logger.info(f"Find the RIFE frames at: {relative_path(rife_frames_dir.absolute())}")
+    logger.info(f"Find the output file at: {relative_path(out_file.absolute())}")
     logger.info("Done!")

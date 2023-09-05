@@ -8,7 +8,7 @@ from huggingface_hub import hf_hub_download, snapshot_download
 from tqdm.rich import tqdm
 
 from animatediff import HF_HUB_CACHE, HF_LIB_NAME, HF_LIB_VER, get_dir
-from animatediff.utils.util import path_from_cwd
+from animatediff.utils.util import relative_path
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def get_hf_file(
     target_path = target_dir.joinpath(filename)
     if target_path.exists() and force is not True:
         raise FileExistsError(
-            f"File {path_from_cwd(target_path)} already exists! Pass force=True to overwrite"
+            f"File {relative_path(target_path)} already exists! Pass force=True to overwrite"
         )
 
     target_dir.mkdir(exist_ok=True, parents=True)
@@ -70,7 +70,7 @@ def get_hf_repo(
 ) -> Path:
     if target_dir.exists() and force is not True:
         raise FileExistsError(
-            f"Target dir {path_from_cwd(target_dir)} already exists! Pass force=True to overwrite"
+            f"Target dir {relative_path(target_dir)} already exists! Pass force=True to overwrite"
         )
 
     target_dir.mkdir(exist_ok=True, parents=True)
@@ -111,9 +111,9 @@ def get_hf_pipeline(
             resume_download=True,
         )
         if save and force_download:
-            logger.warning(f"Pipeline already exists at {path_from_cwd(target_dir)}. Overwriting!")
+            logger.warning(f"Pipeline already exists at {relative_path(target_dir)}. Overwriting!")
             pipeline.save_pretrained(target_dir, safe_serialization=True)
         elif save and not pipeline_exists:
-            logger.info(f"Saving pipeline to {path_from_cwd(target_dir)}")
+            logger.info(f"Saving pipeline to {relative_path(target_dir)}")
             pipeline.save_pretrained(target_dir, safe_serialization=True)
     return pipeline
