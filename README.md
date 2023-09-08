@@ -7,19 +7,15 @@ Also, **infinite generation length support!** yay!
 
 # LoRA loading is ABSOLUTELY NOT IMPLEMENTED YET!
 
+PRs welcome! 😆😅
+
 This can theoretically run on CPU, but it's not recommended. Should work fine on a GPU, nVidia or otherwise,
 but I haven't tested on non-CUDA hardware. Uses PyTorch 2.0 Scaled-Dot-Product Attention (aka builtin xformers)
 by default, but you can pass `--xformers` to force using xformers if you *really* want.
 
-### How To Use
+## How to use
 
-1. Lie down
-2. Try not to cry
-3. Cry a lot
-
-### but for real?
-
-Okay, fine. But it's still a little complicated and there's no webUI yet.
+I should write some more detailed steps, but here's the gist of it:
 
 ```sh
 git clone https://github.com/neggles/animatediff-cli
