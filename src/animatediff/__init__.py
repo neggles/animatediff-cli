@@ -18,8 +18,8 @@ from tqdm import TqdmExperimentalWarning
 PACKAGE = __package__.replace("_", "-")
 PACKAGE_ROOT = Path(__file__).parent.parent
 
-HF_HOME = Path(getenv("HF_HOME", Path.home() / ".cache" / "huggingface"))
-HF_HUB_CACHE = Path(getenv("HUGGINGFACE_HUB_CACHE", HF_HOME.joinpath("hub")))
+HF_HOME = Path(getenv("HF_HOME", None) or Path.home().joinpath(".cache", "huggingface")).resolve()
+HF_HUB_CACHE = Path(getenv("HUGGINGFACE_HUB_CACHE", None) or HF_HOME.joinpath("hub")).resolve()
 
 HF_LIB_NAME = "animatediff-cli"
 HF_LIB_VER = __version__
