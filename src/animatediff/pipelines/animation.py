@@ -513,7 +513,11 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             batch_size = len(prompt)
 
         device = self._execution_device
-        latents_device = torch.device("cpu") if sequential_mode else device
+        latents_device = kwargs.pop("latents_device", None)
+        if latents_device is None:
+            latents_device = torch.device("cpu") if sequential_mode else device
+        else:
+            latents_device = torch.device(latents_device)
 
         # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
