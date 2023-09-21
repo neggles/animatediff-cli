@@ -93,6 +93,7 @@ def get_model_dtypes(
 
 def get_memory_format(device: Union[str, torch.device]) -> torch.memory_format:
     device = torch.device(device)  # make sure device is a torch.device
+    ret = torch.contiguous_format  # default to NCHW
     # if we have a cuda device
     if device.type == "cuda":
         device_info = torch.cuda.get_device_properties(device)
@@ -102,8 +103,8 @@ def get_memory_format(device: Union[str, torch.device]) -> torch.memory_format:
     elif device.type == "xpu":
         # Intel ARC GPUs/XPUs like channels_last
         ret = torch.channels_last
-    else:
-        # TODO: Does MPS like channels_last? do other devices?
-        ret = torch.contiguous_format
+
+    # TODO: Does MPS like channels_last? do other devices?
     if ret == torch.channels_last:
         logger.info("Using channels_last memory format for UNet and VAE")
+    return ret
