@@ -78,14 +78,14 @@ def get_checkpoint_weights(checkpoint: Path):
 
 def ensure_motion_modules(
     repo_id: str = HF_MODULE_REPO,
+    module_files: list[str] = ["mm_sd_v14", "mm_sd_v15", "mm_sd_v15_v2"],
     fp16: bool = False,
     force: bool = False,
 ):
     """Retrieve the motion modules from HuggingFace Hub."""
-    module_files = ["mm_sd_v14.safetensors", "mm_sd_v15.safetensors"]
     module_dir = get_dir("data/models/motion-module")
     for file in module_files:
-        target_path = module_dir.joinpath(file)
+        target_path = module_dir.joinpath(file).with_suffix(".safetensors")
         if fp16:
             target_path = target_path.with_suffix(".fp16.safetensors")
         if target_path.exists() and force is not True:
