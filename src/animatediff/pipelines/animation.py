@@ -25,8 +25,8 @@ from diffusers.utils import (
     deprecate,
     is_accelerate_available,
     is_accelerate_version,
-    randn_tensor,
 )
+from diffusers.utils.torch_utils import randn_tensor
 from einops import rearrange
 from packaging import version
 from tqdm.rich import tqdm

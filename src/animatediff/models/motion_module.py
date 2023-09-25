@@ -4,9 +4,10 @@ from typing import Optional
 
 import torch
 from diffusers.models.attention import Attention, FeedForward
-from diffusers.utils import BaseOutput, maybe_allow_in_graph
+from diffusers.utils import BaseOutput
 from einops import rearrange, repeat
 from torch import Tensor, nn
+from torch._dynamo import allow_in_graph as maybe_allow_in_graph
 
 
 def zero_module(module):
