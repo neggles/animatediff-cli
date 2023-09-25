@@ -20,6 +20,10 @@ pipeline_dir = data_dir.joinpath("models/huggingface")
 # for the nop_train() monkeypatch
 T = TypeVar("T", bound=nn.Module)
 
+MMV2_DIM_KEY = (
+    "up_blocks.0.motion_modules.1.temporal_transformer.transformer_blocks.0.attention_blocks.0.pos_encoder.pe"
+)
+
 
 def nop_train(self: T, mode: bool = True) -> T:
     """No-op for monkeypatching train() call to prevent unfreezing module"""

@@ -14,8 +14,8 @@ from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME, BaseOutput, 
 from safetensors.torch import load_file
 from torch import Tensor, nn
 
-from .resnet import InflatedConv3d
-from .unet_blocks import (
+from animatediff.models.resnet import InflatedConv3d
+from animatediff.models.unet_blocks import (
     CrossAttnDownBlock3D,
     CrossAttnUpBlock3D,
     DownBlock3D,
@@ -24,6 +24,7 @@ from .unet_blocks import (
     get_down_block,
     get_up_block,
 )
+from animatediff.utils.model import MMV2_DIM_KEY
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -500,31 +501,9 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         logger.debug(f"Loading temporal unet weights into {pretrained_model_path}")
 
-        config_file = pretrained_model_path / "config.json"
-        if not (config_file.exists() and config_file.is_file()):
-            raise RuntimeError(f"{config_file} does not exist or is not a file")
-
-        unet_config = cls.load_config(config_file)
-        unet_config["_class_name"] = cls.__name__
-        unet_config["down_block_types"] = [
-            "CrossAttnDownBlock3D",
-            "CrossAttnDownBlock3D",
-            "CrossAttnDownBlock3D",
-            "DownBlock3D",
-        ]
-        unet_config["up_block_types"] = [
-            "UpBlock3D",
-            "CrossAttnUpBlock3D",
-            "CrossAttnUpBlock3D",
-            "CrossAttnUpBlock3D",
-        ]
-        unet_config["mid_block_type"] = "UNetMidBlock3DCrossAttn"
-
-        model: nn.Module = cls.from_config(unet_config, **unet_additional_kwargs)
-
         # load the vanilla weights
         if pretrained_model_path.joinpath(SAFETENSORS_WEIGHTS_NAME).exists():
-            logger.debug(f"loading safeTensors weights from {pretrained_model_path} ...")
+            logger.debug(f"loading SafeTensors weights from {pretrained_model_path} ...")
             state_dict = load_file(pretrained_model_path.joinpath(SAFETENSORS_WEIGHTS_NAME), device="cpu")
 
         elif pretrained_model_path.joinpath(WEIGHTS_NAME).exists():
@@ -550,6 +529,41 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         # merge the state dicts
         state_dict.update(motion_state_dict)
+
+        # check if we have a v1 or v2 motion module
+        motion_up_dim = state_dict[MMV2_DIM_KEY].shape
+        if motion_up_dim[1] != 24:
+            logger.info("Detected V2 motion module")
+            if unet_additional_kwargs:
+                motion_module_kwargs = unet_additional_kwargs.pop("motion_module_kwargs", {})
+                motion_module_kwargs["temporal_position_encoding_max_len"] = motion_up_dim[1]
+                unet_additional_kwargs["motion_module_kwargs"] = motion_module_kwargs
+            else:
+                unet_additional_kwargs = {
+                    "motion_module_kwargs": {"temporal_position_encoding_max_len": motion_up_dim[2]}
+                }
+
+        config_file = pretrained_model_path / "config.json"
+        if not (config_file.exists() and config_file.is_file()):
+            raise RuntimeError(f"{config_file} does not exist or is not a file")
+
+        unet_config = cls.load_config(config_file)
+        unet_config["_class_name"] = cls.__name__
+        unet_config["down_block_types"] = [
+            "CrossAttnDownBlock3D",
+            "CrossAttnDownBlock3D",
+            "CrossAttnDownBlock3D",
+            "DownBlock3D",
+        ]
+        unet_config["up_block_types"] = [
+            "UpBlock3D",
+            "CrossAttnUpBlock3D",
+            "CrossAttnUpBlock3D",
+            "CrossAttnUpBlock3D",
+        ]
+        unet_config["mid_block_type"] = "UNetMidBlock3DCrossAttn"
+
+        model: nn.Module = cls.from_config(unet_config, **unet_additional_kwargs)
 
         # load the weights into the model
         m, u = model.load_state_dict(state_dict, strict=False)
