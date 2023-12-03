@@ -87,6 +87,7 @@ class FfmpegEncoder:
         in_fps: int = 60,
         out_fps: int = 60,
         lossless: bool = False,
+        interpolate: bool = False,
     ):
         self.frames_dir = frames_dir
         self.out_file = out_file
@@ -94,6 +95,7 @@ class FfmpegEncoder:
         self.in_fps = in_fps
         self.out_fps = out_fps
         self.lossless = lossless
+        self.interpolate = interpolate
 
         self.input: Optional[InputNode] = None
 
@@ -155,7 +157,7 @@ class FfmpegEncoder:
 
     def _encode_webp(self) -> tuple:
         stream: FilterNode = self.input
-        if self.in_fps != self.out_fps:
+        if self.in_fps != self.out_fps and self.interpolate is True:
             stream = self._interpolate(stream, self.out_fps)
 
         if self.lossless:
@@ -182,7 +184,7 @@ class FfmpegEncoder:
 
     def _encode_h264(self) -> tuple:
         stream: FilterNode = self.input
-        if self.in_fps != self.out_fps:
+        if self.in_fps != self.out_fps and self.interpolate is True:
             stream = self._interpolate(stream, self.out_fps)
         stream = stream.output(
             self._out_file, pix_fmt="yuv420p", vcodec="libx265", preset="medium", tune="animation"
@@ -191,7 +193,7 @@ class FfmpegEncoder:
 
     def _encode_hevc(self) -> tuple:
         stream: FilterNode = self.input
-        if self.in_fps != self.out_fps:
+        if self.in_fps != self.out_fps and self.interpolate is True:
             stream = self._interpolate(stream, self.out_fps)
         stream = stream.output(self._out_file, pix_fmt="yuv420p", vcodec="libx265", preset="medium")
         return stream.run()
