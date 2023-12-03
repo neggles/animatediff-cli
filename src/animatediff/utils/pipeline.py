@@ -62,7 +62,7 @@ def get_context_params(
     if context is None:
         context = min(length, 16)
     if overlap is None:
-        overlap = context // 2
+        overlap = context // 4
     if stride is None:
-        stride = 4
+        stride = 0
     return context, overlap, stride
