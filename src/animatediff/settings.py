@@ -5,7 +5,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
-from pydantic import BaseConfig, BaseSettings, Field
+from pydantic import BaseConfig, BaseSettings, Field, root_validator
 from pydantic.env_settings import (
     EnvSettingsSource,
     InitSettingsSource,
@@ -107,11 +107,23 @@ class ModelConfig(BaseSettings):
     steps: int = 25  # Number of inference steps to run
     guidance_scale: float = 7.5  # CFG scale to use
     clip_skip: int = 1  # skip the last N-1 layers of the CLIP text encoder
-    prompt: list[str] = Field([])  # Prompt(s) to use
-    n_prompt: list[str] = Field([])  # Anti-prompt(s) to use
+    prompts: list[str | dict[int, str]] = Field([])  # Prompt(s) or prompt map(s) to use
+    n_prompts: list[str] = Field([])  # Anti-prompt(s) to use
 
     class Config(JsonConfig):
         json_config_path: Path
+
+    @root_validator(pre=True)
+    def remap_old_names(cls, values: dict[str, Any]) -> dict[str, Any]:
+        REMAPS = {
+            "prompt": "prompts",
+            "n_prompt": "n_prompts",
+        }
+        for old, new in REMAPS.items():
+            if old in values:
+                logger.warning(f"ModelConfig: {old} has been renamed to {new}, please update your config!")
+                values[new] = values.pop(old)
+        return values
 
     @property
     def save_name(self):

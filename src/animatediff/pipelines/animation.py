@@ -3,7 +3,7 @@
 import inspect
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import torch
@@ -284,16 +284,11 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
 
         # get unconditional embeddings for classifier free guidance
         if do_classifier_free_guidance and negative_prompt_embeds is None:
-            uncond_tokens: List[str]
+            negative_tokens: list[str]
             if negative_prompt is None:
-                uncond_tokens = [""] * batch_size
-            elif prompt is not None and type(prompt) is not type(negative_prompt):
-                raise TypeError(
-                    f"`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
-                    f" {type(prompt)}."
-                )
+                negative_tokens = [""] * batch_size
             elif isinstance(negative_prompt, str):
-                uncond_tokens = [negative_prompt]
+                negative_tokens = [negative_prompt] * batch_size
             elif batch_size != len(negative_prompt):
                 raise ValueError(
                     f"`negative_prompt`: {negative_prompt} has batch size {len(negative_prompt)}, but `prompt`:"
@@ -301,27 +296,27 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                     " the batch size of `prompt`."
                 )
             else:
-                uncond_tokens = negative_prompt
+                negative_tokens = negative_prompt
 
-            # textual inversion: procecss multi-vector tokens if necessary
+            # textual inversion: process multi-vector tokens if necessary
             if isinstance(self, TextualInversionLoaderMixin):
-                uncond_tokens = self.maybe_convert_prompt(uncond_tokens, self.tokenizer)
+                negative_tokens = self.maybe_convert_prompt(negative_tokens, self.tokenizer)
 
             max_length = prompt_embeds.shape[1]
-            uncond_input = self.tokenizer(
-                uncond_tokens,
+            neg_input_ids = self.tokenizer(
+                negative_tokens,
                 padding="max_length",
                 max_length=max_length,
                 truncation=True,
                 return_tensors="pt",
             )
-            uncond_input_ids = uncond_input.input_ids
+            uncond_input_ids = neg_input_ids.input_ids
 
             if (
                 hasattr(self.text_encoder.config, "use_attention_mask")
                 and self.text_encoder.config.use_attention_mask
             ):
-                attention_mask = uncond_input.attention_mask.to(device)
+                attention_mask = neg_input_ids.attention_mask.to(device)
             else:
                 attention_mask = None
 
@@ -343,9 +338,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                 batch_size * num_videos_per_prompt, seq_len, -1
             )
 
-            # For classifier free guidance, we need to do two forward passes.
-            # Here we concatenate the unconditional and text embeddings into a single batch
-            # to avoid doing two forward passes
             prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds])
 
         return prompt_embeds
@@ -465,19 +457,19 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         latents = latents * self.scheduler.init_noise_sigma
         return latents.to(device, dtype)
 
-    @torch.no_grad()
     def __call__(
         self,
-        prompt: Union[str, List[str]] = None,
+        prompt: Optional[str] = None,
+        prompt_map: Optional[dict[int, str]] = None,
         height: Optional[int] = None,
         width: Optional[int] = None,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
-        negative_prompt: Optional[Union[str, List[str]]] = None,
-        video_length: Optional[int] = None,
+        negative_prompt: Optional[Union[str, list[str]]] = None,
+        video_length: int = ...,
         num_videos_per_prompt: Optional[int] = 1,
         eta: float = 0.0,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+        generator: Optional[Union[torch.Generator, list[torch.Generator]]] = None,
         latents: Optional[torch.FloatTensor] = None,
         prompt_embeds: Optional[torch.FloatTensor] = None,
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
@@ -485,7 +477,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         return_dict: bool = True,
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+        cross_attention_kwargs: Optional[dict[str, Any]] = None,
         context_frames: int = -1,
         context_stride: int = 3,
         context_overlap: int = 4,
@@ -493,12 +485,26 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         clip_skip: int = 1,
         **kwargs,
     ):
+        if prompt is None and prompt_map is None:
+            raise ValueError("Must provide a prompt or a prompt map.")
+
+        if prompt_map is None:
+            prompt_map = {0: prompt}
+
+        # prepare map for prompt travel by frame index
+        last_frame = video_length - 1
+        prompt_map = self._prepare_map(prompt_map, last_frame)
+        if len(prompt_map) > 1:
+            logger.info("Keyframes for this animation:")
+            for idx, prompt in prompt_map.items():
+                logger.info(f" - F{idx:03d}: {prompt[:70]}...")
+
         # Default height and width to unet
         height = height or self.unet.config.sample_size * self.vae_scale_factor
         width = width or self.unet.config.sample_size * self.vae_scale_factor
 
-        # 16 frames is max reliable number for one-shot mode, so we use sequential mode for longer videos
-        sequential_mode = video_length is not None and video_length > 16
+        # 24 frames is max reliable number for one-shot mode, so we use sequential mode for longer videos
+        sequential_mode = video_length > 24
 
         # 1. Check inputs. Raise error if not correct
         self.check_inputs(
@@ -528,17 +534,58 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         text_encoder_lora_scale = (
             cross_attention_kwargs.get("scale", None) if cross_attention_kwargs is not None else None
         )
+
+        # build map for prompt travel by frame index
+        frame_to_embed: dict[int, torch.Tensor] = {}
+        prompt_list = list(prompt_map.values())
         prompt_embeds = self._encode_prompt(
-            prompt,
+            prompt_list,
             device,
             num_videos_per_prompt,
             do_classifier_free_guidance,
             negative_prompt,
-            prompt_embeds=prompt_embeds,
-            negative_prompt_embeds=negative_prompt_embeds,
-            lora_scale=text_encoder_lora_scale,
+            prompt_embeds=None,
+            negative_prompt_embeds=None,
             clip_skip=clip_skip,
         )
+
+        if do_classifier_free_guidance:
+            negative, positive = prompt_embeds.chunk(2, 0)
+            negative = negative.chunk(negative.shape[0], 0)
+            positive = positive.chunk(positive.shape[0], 0)
+        else:
+            positive = prompt_embeds
+            positive = positive.chunk(positive.shape[0], 0)
+
+        for i, key_frame in enumerate(prompt_map):
+            if do_classifier_free_guidance:
+                frame_to_embed[key_frame] = torch.cat([negative[i], positive[i]])
+            else:
+                frame_to_embed[key_frame] = positive[i]
+
+        keyframes = sorted(frame_to_embed.keys())
+
+        def get_frame_embeds(context: list[int]):
+            # if we only have one frame we only have one frame
+            if len(keyframes) == 1:
+                return frame_to_embed[0]
+
+            # get frame in the middle of the context
+            fidx = context[len(context) // 2]
+
+            # if we're exactly on a frame, just return it (first/last guaranteed)
+            if fidx in frame_to_embed:
+                return frame_to_embed[fidx]
+
+            # otherwise, we need to interpolate, so find the previous and next frame IDs
+            pidx = np.searchsorted(keyframes, fidx)
+            last_key, next_key = keyframes[pidx - 1 : pidx + 1]
+
+            # and interpolate between them for our mix factor
+            multiplier = np.interp(fidx, [last_key, next_key], [0, 1])
+
+            # mix the embeddings and return
+            return frame_to_embed[last_key] * (1 - multiplier) + frame_to_embed[next_key] * multiplier
 
         # 4. Prepare timesteps
         self.scheduler.set_timesteps(num_inference_steps, device=latents_device)
@@ -552,7 +599,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             video_length,
             height,
             width,
-            prompt_embeds.dtype,
+            frame_to_embed[0].dtype,
             latents_device,  # keep latents on cpu for sequential mode
             generator,
             latents,
@@ -595,13 +642,16 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                         .to(device)
                         .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
                     )
-                    latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                    latent_model_input = self.scheduler.scale_model_input(latent_model_input, t).to(
+                        self.unet.device, self.unet.dtype
+                    )
 
+                    frame_embeds = get_frame_embeds(context).to(self.unet.device, self.unet.dtype)
                     # predict the noise residual
                     pred = self.unet(
-                        latent_model_input.to(self.unet.device, self.unet.dtype),
+                        latent_model_input,
                         t,
-                        encoder_hidden_states=prompt_embeds,
+                        encoder_hidden_states=frame_embeds,
                         cross_attention_kwargs=cross_attention_kwargs,
                         return_dict=False,
                     )[0]
@@ -679,3 +729,33 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         _ = self.vae.eval()
         self.vae = self.vae.requires_grad_(False)
         self.vae.train = nop_train
+
+    def _prepare_map(self, prompt_map: dict[int, str], last_frame: int) -> dict[int, str]:
+        # if we only have one prompt, just set its key to 0 and return
+        if len(prompt_map) == 1:
+            return {0: next(prompt_map.values())}
+
+        # helper to get current indexes
+        def frame_ids():
+            return sorted([int(x) for x in prompt_map.keys()])
+
+        # remap -1 to the last frame
+        if -1 in frame_ids():
+            prompt_map[last_frame] = prompt_map.pop(-1)
+
+        # if no prompt for first frame, copy the first prompt
+        if 0 not in frame_ids():
+            prompt_map[0] = prompt_map[frame_ids()[0]]
+
+        # if no prompt for last frame, copy the last prompt
+        if last_frame not in frame_ids():
+            prompt_map[last_frame] = prompt_map[frame_ids()[-1]]
+
+        # make sure our max is not greater than the last frame
+        max_frame = max(frame_ids())
+        if max_frame > last_frame:
+            raise ValueError(f"Prompt map has a frame {max_frame} greater than the last frame {last_frame}")
+
+        # sort the prompt map by frame index and return
+        prompt_map = dict(sorted(prompt_map.items()))
+        return prompt_map

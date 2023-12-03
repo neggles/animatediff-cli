@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 from torch import nn
-from torch._dynamo import allow_in_graph as maybe_allow_in_graph
+from torch._dynamo import allow_in_graph
 
 from animatediff.models.attention import Transformer3DModel
 from animatediff.models.motion_module import get_motion_module
@@ -151,7 +151,7 @@ def get_up_block(
     raise ValueError(f"{up_block_type} does not exist.")
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class UNetMidBlock3DCrossAttn(nn.Module):
     def __init__(
         self,
@@ -276,7 +276,7 @@ class UNetMidBlock3DCrossAttn(nn.Module):
         return hidden_states
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class CrossAttnDownBlock3D(nn.Module):
     def __init__(
         self,
@@ -445,7 +445,7 @@ class CrossAttnDownBlock3D(nn.Module):
         return hidden_states, output_states
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class DownBlock3D(nn.Module):
     def __init__(
         self,
@@ -558,7 +558,7 @@ class DownBlock3D(nn.Module):
         return hidden_states, output_states
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class CrossAttnUpBlock3D(nn.Module):
     def __init__(
         self,
@@ -722,7 +722,7 @@ class CrossAttnUpBlock3D(nn.Module):
         return hidden_states
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class UpBlock3D(nn.Module):
     def __init__(
         self,

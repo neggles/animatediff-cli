@@ -2,7 +2,7 @@ import logging
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import torch
 from diffusers import AutoencoderKL, StableDiffusionPipeline
@@ -14,7 +14,6 @@ from animatediff.models.unet import UNet3DConditionModel
 from animatediff.pipelines import AnimationPipeline, load_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
-from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
 from animatediff.utils.model import ensure_motion_modules, get_checkpoint_weights
 from animatediff.utils.util import save_video
 
@@ -35,8 +34,10 @@ def create_pipeline(
     """Create an AnimationPipeline from a pretrained model.
     Uses the base_model argument to load or download the pretrained reference pipeline model."""
 
+    logger.info("Loading pipeline components...")
+
     # make sure motion_module is a Path and exists
-    logger.info("Checking motion module...")
+    logger.debug("Checking motion module...")
     motion_module = data_dir.joinpath(model_config.motion_module)
     if not (motion_module.exists() and motion_module.is_file()):
         # check for safetensors version
@@ -48,13 +49,13 @@ def create_pipeline(
             # this should never happen, but just in case...
             raise FileNotFoundError(f"Motion module {motion_module} does not exist or is not a file!")
 
-    logger.info("Loading tokenizer...")
+    logger.debug("Loading tokenizer...")
     tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
-    logger.info("Loading text encoder...")
+    logger.debug("Loading text encoder...")
     text_encoder: CLIPSkipTextModel = CLIPSkipTextModel.from_pretrained(base_model, subfolder="text_encoder")
-    logger.info("Loading VAE...")
+    logger.debug("Loading VAE...")
     vae: AutoencoderKL = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
-    logger.info("Loading UNet...")
+    logger.debug("Loading UNet...")
     unet: UNet3DConditionModel = UNet3DConditionModel.from_pretrained_2d(
         pretrained_model_path=base_model,
         motion_module_path=motion_module,
@@ -135,7 +136,8 @@ def create_pipeline(
 
 def run_inference(
     pipeline: AnimationPipeline,
-    prompt: str = ...,
+    prompt: Optional[str] = None,
+    prompt_map: Optional[dict[int, str]] = None,
     n_prompt: str = ...,
     seed: int = -1,
     steps: int = 25,
@@ -152,6 +154,9 @@ def run_inference(
     clip_skip: int = 1,
     return_dict: bool = False,
 ):
+    if prompt is None and prompt_map is None:
+        raise ValueError("prompt and prompt_map cannot both be None, one must be provided")
+
     out_dir = Path(out_dir)  # ensure out_dir is a Path
 
     if seed != -1:
@@ -162,6 +167,7 @@ def run_inference(
     with torch.inference_mode(True):
         pipeline_output = pipeline(
             prompt=prompt,
+            prompt_map=prompt_map,
             negative_prompt=n_prompt,
             num_inference_steps=steps,
             guidance_scale=guidance_scale,
@@ -178,11 +184,12 @@ def run_inference(
     logger.info("Generation complete, saving...")
 
     # Trim and clean up the prompt for filename use
-    prompt_tags = [re_clean_prompt.sub("", tag).strip().replace(" ", "-") for tag in prompt.split(",")]
+    prompt_str = prompt or next(iter(prompt_map.values()))
+    prompt_tags = [re_clean_prompt.sub("", tag).strip().replace(" ", "-") for tag in prompt_str.split(",")]
     prompt_str = "_".join((prompt_tags[:6]))
 
     # generate the output filename and save the video
-    out_str = f"{idx:02d}_{seed}_{prompt_str}"[:251]
+    out_str = f"{idx:02d}_{seed}_{prompt_str}"[:250]
     out_file = out_dir.joinpath(f"{out_str}.gif")
     if return_dict is True:
         save_video(pipeline_output["videos"], out_file)

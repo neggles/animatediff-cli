@@ -10,7 +10,7 @@ from diffusers.models.attention import AdaLayerNorm, Attention, FeedForward
 from diffusers.utils import BaseOutput
 from einops import rearrange, repeat
 from torch import Tensor, nn
-from torch._dynamo import allow_in_graph as maybe_allow_in_graph
+from torch._dynamo import allow_in_graph
 
 
 @dataclass
@@ -18,7 +18,7 @@ class Transformer3DModelOutput(BaseOutput):
     sample: torch.FloatTensor
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class Transformer3DModel(ModelMixin, ConfigMixin):
     @register_to_config
     def __init__(
@@ -172,7 +172,7 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         return Transformer3DModelOutput(sample=output)
 
 
-@maybe_allow_in_graph
+@allow_in_graph
 class BasicTransformerBlock(nn.Module):
     def __init__(
         self,

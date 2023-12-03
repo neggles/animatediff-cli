@@ -298,8 +298,8 @@ def generate(
     save_config_path = save_dir.joinpath("prompt.json")
     save_config_path.write_text(model_config.json(), encoding="utf-8")
 
-    num_prompts = len(model_config.prompt)
-    num_negatives = len(model_config.n_prompt)
+    num_prompts = len(model_config.prompts)
+    num_negatives = len(model_config.n_prompts)
     num_seeds = len(model_config.seed)
     gen_total = num_prompts * repeats  # total number of generations
 
@@ -310,13 +310,18 @@ def generate(
     gen_num = 0  # global generation index
     # repeat the prompts if we're doing multiple runs
     for _ in range(repeats):
-        for prompt in model_config.prompt:
+        for prompt in model_config.prompts:
             # get the index of the prompt, negative, and seed
             idx = gen_num % num_prompts
             logger.info(f"Running generation {gen_num + 1} of {gen_total} (prompt {idx + 1})")
 
+            if isinstance(prompt, dict):
+                logger.info("Using prompt travel map...")
+                prompt_map = prompt
+                prompt = None  # not used
+
             # allow for reusing the same negative prompt(s) and seed(s) for multiple prompts
-            n_prompt = model_config.n_prompt[idx % num_negatives]
+            n_prompt = model_config.n_prompts[idx % num_negatives]
             seed = seed = model_config.seed[idx % num_seeds]
 
             # duplicated in run_inference, but this lets us use it for frame save dirs
@@ -328,6 +333,7 @@ def generate(
             output = run_inference(
                 pipeline=pipeline,
                 prompt=prompt,
+                prompt_map=prompt_map,
                 n_prompt=n_prompt,
                 seed=seed,
                 steps=model_config.steps,

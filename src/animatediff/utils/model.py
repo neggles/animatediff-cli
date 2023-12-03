@@ -3,6 +3,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Optional, TypeVar
 
+import torch
 from diffusers import StableDiffusionPipeline
 from huggingface_hub import hf_hub_download
 from torch import nn
@@ -28,6 +29,14 @@ MMV2_DIM_KEY = (
 def nop_train(self: T, mode: bool = True) -> T:
     """No-op for monkeypatching train() call to prevent unfreezing module"""
     return self
+
+
+def autocast_device(device: torch.device | str | None):
+    if isinstance(device, torch.device):
+        return device.type
+    if isinstance(device, str):
+        return torch.device(device).type
+    return "cuda"
 
 
 def get_base_model(model_name_or_path: str, local_dir: Path, force: bool = False) -> Path:
