@@ -7,7 +7,6 @@
     "files.associations": {
         "*.yaml": "yaml"
     },
-
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,
@@ -15,29 +14,40 @@
         "**/CVS": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        "**/__pycache__": true
+        "**/.ruff_cache": true,
+        "**/__pycache__": true,
+        "**/*.egg-info": true
+    },
+
+    "[shellscript]": {
+        "files.eol": "\n",
+        "editor.tabSize": 4,
+        "editor.detectIndentation": false
     },
 
     "[python]": {
-        "editor.wordBasedSuggestions": false,
+        "editor.wordBasedSuggestions": "off",
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.codeActionsOnSave": {
-            "source.organizeImports": true
+            "source.organizeImports": "always"
         }
     },
     "python.analysis.include": ["./src", "./scripts", "./tests"],
 
-    "python.linting.enabled": false,
-    "python.linting.pylintEnabled": false,
-    "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": ["--config=${workspaceFolder}/setup.cfg"],
-
     "[json]": {
-        "editor.tabSize": 2,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.detectIndentation": false,
+        "editor.formatOnSaveMode": "file",
         "editor.formatOnSave": true,
-        "editor.formatOnSaveMode": "file"
+        "editor.tabSize": 2
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.detectIndentation": false,
+        "editor.formatOnSaveMode": "file",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2
     },
 
     "[toml]": {
@@ -54,7 +64,9 @@
         "editor.detectIndentation": false,
         "editor.tabSize": 2,
         "editor.formatOnSave": true,
-        "editor.formatOnSaveMode": "file"
+        "editor.formatOnSaveMode": "file",
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.defaultFormatter": "redhat.vscode-yaml"
     },
     "yaml.format.bracketSpacing": true,
     "yaml.format.proseWrap": "preserve",
