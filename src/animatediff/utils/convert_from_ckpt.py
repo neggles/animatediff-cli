@@ -15,19 +15,9 @@
 """ Conversion script for the Stable Diffusion checkpoints."""
 
 import re
-from io import BytesIO
-from typing import Optional
 
-import requests
-import torch
-from diffusers.models import (
-    AutoencoderKL,
-    ControlNetModel,
-    PriorTransformer,
-    UNet2DConditionModel,
-)
 from diffusers.schedulers import DDIMScheduler
-from diffusers.utils import is_accelerate_available, is_omegaconf_available, is_safetensors_available, logging
+from diffusers.utils import is_accelerate_available, logging
 from transformers import CLIPTextConfig, CLIPTextModel
 
 if is_accelerate_available():

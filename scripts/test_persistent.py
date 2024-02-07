@@ -1,5 +1,3 @@
-from rich import print
-
 from animatediff import get_dir
 from animatediff.cli import generate, logger
 

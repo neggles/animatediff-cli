@@ -1,11 +1,9 @@
 from enum import Enum
 from pathlib import Path
-from re import split
-from typing import Annotated, Optional, Union
+from typing import Optional
 
 import ffmpeg
 from ffmpeg.nodes import FilterNode, InputNode
-from torch import Value
 
 
 class VideoCodec(str, Enum):

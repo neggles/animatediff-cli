@@ -1,9 +1,8 @@
 from typing import Optional, Tuple, Union
 
 import torch
-from torch import Tensor, nn
 from transformers.modeling_outputs import BaseModelOutput, BaseModelOutputWithPooling
-from transformers.models.clip import CLIPPreTrainedModel, CLIPTextConfig, CLIPTextModel
+from transformers.models.clip import CLIPTextConfig, CLIPTextModel
 from transformers.models.clip.modeling_clip import (
     CLIP_TEXT_INPUTS_DOCSTRING,
     CLIPTextTransformer,
