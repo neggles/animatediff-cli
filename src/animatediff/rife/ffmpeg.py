@@ -187,7 +187,7 @@ class FfmpegEncoder:
         if self.in_fps != self.out_fps and self.interpolate is True:
             stream = self._interpolate(stream, self.out_fps)
         stream = stream.output(
-            self._out_file, pix_fmt="yuv420p", vcodec="libx265", preset="medium", tune="animation"
+            self._out_file, pix_fmt="yuv420p", vcodec="libx264", preset="medium", tune="animation"
         )
         return stream.run()
 
