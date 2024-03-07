@@ -293,6 +293,12 @@ def generate(
             pipeline, device, freeze=True, force_half=force_half_vae, compile=model_config.compile
         )
 
+    # generate seeds if we don't have them
+    for idx, seed in enumerate(model_config.seed):
+        if seed == -1:
+            seed = torch.seed()
+            model_config.seed[idx] = seed
+
     # save config to output directory
     logger.info("Saving prompt config to output directory")
     save_config_path = save_dir.joinpath("prompt.json")
@@ -324,12 +330,10 @@ def generate(
             # allow for reusing the same negative prompt(s) and seed(s) for multiple prompts
             n_prompt = model_config.n_prompts[idx % num_negatives]
             seed = seed = model_config.seed[idx % num_seeds]
+            logger.info(f"Generation seed: {seed}")
 
             # duplicated in run_inference, but this lets us use it for frame save dirs
             # TODO: Move gif Output out of run_inference...
-            if seed == -1:
-                seed = torch.seed()
-            logger.info(f"Generation seed: {seed}")
 
             output = run_inference(
                 pipeline=pipeline,
