@@ -315,6 +315,7 @@ def generate(
             idx = gen_num % num_prompts
             logger.info(f"Running generation {gen_num + 1} of {gen_total} (prompt {idx + 1})")
 
+            prompt_map = None
             if isinstance(prompt, dict):
                 logger.info("Using prompt travel map...")
                 prompt_map = prompt

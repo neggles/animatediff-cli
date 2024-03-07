@@ -733,7 +733,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     def _prepare_map(self, prompt_map: dict[int, str], last_frame: int) -> dict[int, str]:
         # if we only have one prompt, just set its key to 0 and return
         if len(prompt_map) == 1:
-            return {0: next(prompt_map.values())}
+            return {0: next(iter(prompt_map.values()))}
 
         # helper to get current indexes
         def frame_ids():
