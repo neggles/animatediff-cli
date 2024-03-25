@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Conversion script for the Stable Diffusion checkpoints."""
+"""Conversion script for the Stable Diffusion checkpoints."""
 
 import re
 
@@ -574,9 +574,9 @@ def convert_ldm_unet_checkpoint(
         diffusers_index = 0
 
         while diffusers_index < 6:
-            new_checkpoint[
-                f"controlnet_cond_embedding.blocks.{diffusers_index}.weight"
-            ] = unet_state_dict.pop(f"input_hint_block.{orig_index}.weight")
+            new_checkpoint[f"controlnet_cond_embedding.blocks.{diffusers_index}.weight"] = (
+                unet_state_dict.pop(f"input_hint_block.{orig_index}.weight")
+            )
             new_checkpoint[f"controlnet_cond_embedding.blocks.{diffusers_index}.bias"] = unet_state_dict.pop(
                 f"input_hint_block.{orig_index}.bias"
             )
