@@ -27,11 +27,12 @@ def uniform(
         return
 
     context_stride = min(context_stride, int(np.ceil(np.log2(num_frames / context_size))) + 1)
+    halved = ordered_halving(step)
 
     for context_step in 1 << np.arange(context_stride):
-        pad = int(round(num_frames * ordered_halving(step)))
+        pad = int(round(num_frames * halved))
         for j in range(
-            int(ordered_halving(step) * context_step) + pad,
+            int(halved * context_step) + pad,
             num_frames + pad + (0 if closed_loop else -context_overlap),
             (context_size * context_step - context_overlap),
         ):
