@@ -7,7 +7,7 @@ ci:
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.7
+    rev: v0.5.2
     hooks:
       # Run the linter.
       - id: ruff
