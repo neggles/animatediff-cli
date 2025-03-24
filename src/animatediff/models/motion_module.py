@@ -128,9 +128,9 @@ class TemporalTransformer3DModel(nn.Module):
         encoder_hidden_states: Optional[Tensor] = None,
         attention_mask: Optional[Tensor] = None,
     ):
-        assert (
-            hidden_states.dim() == 5
-        ), f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
+        assert hidden_states.dim() == 5, (
+            f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
+        )
         video_length = hidden_states.shape[2]
         hidden_states = rearrange(hidden_states, "b c f h w -> (b f) c h w")
 

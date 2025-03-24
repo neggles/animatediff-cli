@@ -19,7 +19,7 @@ def send_to_device(
     force_half: bool = False,
     compile: bool = False,
 ) -> AnimationPipeline:
-    logger.info(f"Sending pipeline to device \"{device.type}{device.index if device.index else ''}\"")
+    logger.info(f'Sending pipeline to device "{device.type}{device.index if device.index else ""}"')
 
     # Freeze model weights and force-disable training
     if freeze or compile:

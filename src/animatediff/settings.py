@@ -43,11 +43,11 @@ class JsonSettingsSource:
         merged_config = dict()  # create an empty dict to merge configs into
         for idx, path in enumerate(self.json_config_path):
             if path.exists() and path.is_file():  # check if the path exists and is a file
-                logger.debug(f"{classname}: loading config #{idx+1} from {path}")
+                logger.debug(f"{classname}: loading config #{idx + 1} from {path}")
                 merged_config.update(json.loads(path.read_text(encoding=encoding)))
-                logger.debug(f"{classname}: config state #{idx+1}: {merged_config}")
+                logger.debug(f"{classname}: config state #{idx + 1}: {merged_config}")
             else:
-                raise FileNotFoundError(f"{classname}: config #{idx+1} at {path} not found or not a file")
+                raise FileNotFoundError(f"{classname}: config #{idx + 1} at {path} not found or not a file")
 
         logger.debug(f"{classname}: loaded config: {merged_config}")
         return merged_config  # return the merged config
