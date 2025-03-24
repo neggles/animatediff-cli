@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def device_info_str(device: torch.device) -> str:
     device_info = torch.cuda.get_device_properties(device)
     return (
-        f"{device_info.name} {ceil(device_info.total_memory / 1024 ** 3)}GB, "
+        f"{device_info.name} {ceil(device_info.total_memory / 1024**3)}GB, "
         + f"CC {device_info.major}.{device_info.minor}, {device_info.multi_processor_count} SM(s)"
     )
 
