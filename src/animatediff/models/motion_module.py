@@ -1,6 +1,5 @@
 import math
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 from diffusers.models.attention import Attention, FeedForward
@@ -125,8 +124,8 @@ class TemporalTransformer3DModel(nn.Module):
     def forward(
         self,
         hidden_states: Tensor,
-        encoder_hidden_states: Optional[Tensor] = None,
-        attention_mask: Optional[Tensor] = None,
+        encoder_hidden_states: Tensor | None = None,
+        attention_mask: Tensor | None = None,
     ):
         assert hidden_states.dim() == 5, (
             f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
@@ -251,7 +250,7 @@ class VersatileAttention(Attention):
     def __init__(
         self,
         attention_mode: str = None,
-        cross_frame_attention_mode: Optional[str] = None,
+        cross_frame_attention_mode: str | None = None,
         temporal_position_encoding: bool = False,
         temporal_position_encoding_max_len: int = 24,
         *args,

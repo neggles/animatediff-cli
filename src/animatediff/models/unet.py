@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import torch
 import torch.utils.checkpoint
@@ -40,27 +40,27 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
     @register_to_config
     def __init__(
         self,
-        sample_size: Optional[int] = None,
+        sample_size: int | None = None,
         in_channels: int = 4,
         out_channels: int = 4,
         center_input_sample: bool = False,
         flip_sin_to_cos: bool = True,
         freq_shift: int = 0,
-        down_block_types: Tuple[str] = (
+        down_block_types: tuple[str] = (
             "CrossAttnDownBlock3D",
             "CrossAttnDownBlock3D",
             "CrossAttnDownBlock3D",
             "DownBlock3D",
         ),
         mid_block_type: str = "UNetMidBlock3DCrossAttn",
-        up_block_types: Tuple[str] = (
+        up_block_types: tuple[str] = (
             "UpBlock3D",
             "CrossAttnUpBlock3D",
             "CrossAttnUpBlock3D",
             "CrossAttnUpBlock3D",
         ),
-        only_cross_attention: Union[bool, Tuple[bool]] = False,
-        block_out_channels: Tuple[int] = (320, 640, 1280, 1280),
+        only_cross_attention: bool | tuple[bool] = False,
+        block_out_channels: tuple[int] = (320, 640, 1280, 1280),
         layers_per_block: int = 2,
         downsample_padding: int = 1,
         mid_block_scale_factor: float = 1,
@@ -68,12 +68,12 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         norm_num_groups: int = 32,
         norm_eps: float = 1e-5,
         cross_attention_dim: int = 1280,
-        attention_head_dim: Union[int, Tuple[int]] = 8,
-        num_attention_heads: Optional[Union[int, Tuple[int]]] = None,
+        attention_head_dim: int | tuple[int] = 8,
+        num_attention_heads: int | tuple[int] | None = None,
         dual_cross_attention: bool = False,
         use_linear_projection: bool = False,
-        class_embed_type: Optional[str] = None,
-        num_class_embeds: Optional[int] = None,
+        class_embed_type: str | None = None,
+        num_class_embeds: int | None = None,
         upcast_attention: bool = False,
         resnet_time_scale_shift: str = "default",
         # Additional
@@ -291,7 +291,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         # Recursively walk through all the children.
         # Any children which exposes the set_attention_slice method
         # gets the message
-        def fn_recursive_set_attention_slice(module: nn.Module, slice_size: List[int]):
+        def fn_recursive_set_attention_slice(module: nn.Module, slice_size: list[int]):
             if hasattr(module, "set_attention_slice"):
                 module.set_attention_slice(slice_size.pop())
 
@@ -309,15 +309,15 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
     def forward(
         self,
         sample: torch.FloatTensor,
-        timestep: Union[Tensor, float, int],
+        timestep: Tensor | float,
         encoder_hidden_states: Tensor,
-        class_labels: Optional[Tensor] = None,
-        attention_mask: Optional[Tensor] = None,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        added_cond_kwargs: Optional[Dict[str, torch.Tensor]] = None,
-        encoder_attention_mask: Optional[torch.Tensor] = None,
+        class_labels: Tensor | None = None,
+        attention_mask: Tensor | None = None,
+        cross_attention_kwargs: dict[str, Any] | None = None,
+        added_cond_kwargs: dict[str, torch.Tensor] | None = None,
+        encoder_attention_mask: torch.Tensor | None = None,
         return_dict: bool = True,
-    ) -> Union[UNet3DConditionOutput, Tuple]:
+    ) -> UNet3DConditionOutput | tuple:
         r"""
         Args:
             sample (`torch.FloatTensor`): (batch, channel, height, width) noisy inputs tensor
@@ -491,8 +491,8 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         cls: "UNet3DConditionModel",
         pretrained_model_path: PathLike,
         motion_module_path: PathLike,
-        subfolder: Optional[str] = None,
-        unet_additional_kwargs: Optional[dict] = None,
+        subfolder: str | None = None,
+        unet_additional_kwargs: dict | None = None,
     ):
         pretrained_model_path = Path(pretrained_model_path)
         motion_module_path = Path(motion_module_path)
