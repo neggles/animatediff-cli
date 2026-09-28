@@ -1,6 +1,6 @@
 # Adapted from https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/unet_2d_blocks.py
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import torch
 from torch import nn
@@ -35,7 +35,7 @@ def get_down_block(
     motion_module_type=None,
     motion_module_kwargs=None,
 ):
-    down_block_type = down_block_type[7:] if down_block_type.startswith("UNetRes") else down_block_type
+    down_block_type = down_block_type.removeprefix("UNetRes")
     if down_block_type == "DownBlock3D":
         return DownBlock3D(
             num_layers=num_layers,
@@ -105,7 +105,7 @@ def get_up_block(
     motion_module_type=None,
     motion_module_kwargs=None,
 ):
-    up_block_type = up_block_type[7:] if up_block_type.startswith("UNetRes") else up_block_type
+    up_block_type = up_block_type.removeprefix("UNetRes")
     if up_block_type == "UpBlock3D":
         return UpBlock3D(
             num_layers=num_layers,
@@ -248,11 +248,11 @@ class UNetMidBlock3DCrossAttn(nn.Module):
     def forward(
         self,
         hidden_states: torch.FloatTensor,
-        temb: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
+        temb: torch.FloatTensor | None = None,
+        encoder_hidden_states: torch.FloatTensor | None = None,
+        attention_mask: torch.FloatTensor | None = None,
+        cross_attention_kwargs: dict[str, Any] | None = None,
+        encoder_attention_mask: torch.FloatTensor | None = None,
     ) -> torch.FloatTensor:
         hidden_states = self.resnets[0](hidden_states, temb)
         for attn, resnet, motion_module in zip(self.attentions, self.resnets[1:], self.motion_modules):
@@ -381,11 +381,11 @@ class CrossAttnDownBlock3D(nn.Module):
     def forward(
         self,
         hidden_states: torch.FloatTensor,
-        temb: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
+        temb: torch.FloatTensor | None = None,
+        encoder_hidden_states: torch.FloatTensor | None = None,
+        attention_mask: torch.FloatTensor | None = None,
+        cross_attention_kwargs: dict[str, Any] | None = None,
+        encoder_attention_mask: torch.FloatTensor | None = None,
     ) -> torch.FloatTensor:
         output_states = ()
 
@@ -657,13 +657,13 @@ class CrossAttnUpBlock3D(nn.Module):
     def forward(
         self,
         hidden_states: torch.FloatTensor,
-        res_hidden_states_tuple: Tuple[torch.FloatTensor, ...],
-        temb: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        upsample_size: Optional[int] = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
+        res_hidden_states_tuple: tuple[torch.FloatTensor, ...],
+        temb: torch.FloatTensor | None = None,
+        encoder_hidden_states: torch.FloatTensor | None = None,
+        cross_attention_kwargs: dict[str, Any] | None = None,
+        upsample_size: int | None = None,
+        attention_mask: torch.FloatTensor | None = None,
+        encoder_attention_mask: torch.FloatTensor | None = None,
     ):
         for resnet, attn, motion_module in zip(self.resnets, self.attentions, self.motion_modules):
             # pop res hidden states

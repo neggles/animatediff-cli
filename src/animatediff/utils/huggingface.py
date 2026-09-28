@@ -1,7 +1,6 @@
 import logging
 from os import PathLike
 from pathlib import Path
-from typing import Optional
 
 from diffusers import StableDiffusionPipeline
 from huggingface_hub import hf_hub_download, snapshot_download
@@ -37,8 +36,8 @@ def get_hf_file(
     repo_id: Path,
     filename: str,
     target_dir: Path,
-    subfolder: Optional[PathLike] = None,
-    revision: Optional[str] = None,
+    subfolder: PathLike | None = None,
+    revision: str | None = None,
     force: bool = False,
 ) -> Path:
     target_path = target_dir.joinpath(filename)
@@ -64,8 +63,8 @@ def get_hf_file(
 def get_hf_repo(
     repo_id: Path,
     target_dir: Path,
-    subfolder: Optional[PathLike] = None,
-    revision: Optional[str] = None,
+    subfolder: PathLike | None = None,
+    revision: str | None = None,
     force: bool = False,
 ) -> Path:
     if target_dir.exists() and force is not True:
