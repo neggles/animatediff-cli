@@ -2,8 +2,9 @@
 
 import inspect
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AnimationPipelineOutput(BaseOutput):
-    videos: Union[torch.Tensor, np.ndarray]
+    videos: torch.Tensor | np.ndarray
 
 
 class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
@@ -53,14 +54,14 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     tokenizer: CLIPTokenizer
     unet: UNet3DConditionModel
     feature_extractor: CLIPImageProcessor
-    scheduler: Union[
-        DDIMScheduler,
-        DPMSolverMultistepScheduler,
-        EulerAncestralDiscreteScheduler,
-        EulerDiscreteScheduler,
-        LMSDiscreteScheduler,
-        PNDMScheduler,
-    ]
+    scheduler: (
+        DDIMScheduler
+        | DPMSolverMultistepScheduler
+        | EulerAncestralDiscreteScheduler
+        | EulerDiscreteScheduler
+        | LMSDiscreteScheduler
+        | PNDMScheduler
+    )
 
     def __init__(
         self,
@@ -68,14 +69,12 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         text_encoder: CLIPSkipTextModel,
         tokenizer: CLIPTokenizer,
         unet: UNet3DConditionModel,
-        scheduler: Union[
-            DDIMScheduler,
-            PNDMScheduler,
-            LMSDiscreteScheduler,
-            EulerDiscreteScheduler,
-            EulerAncestralDiscreteScheduler,
-            DPMSolverMultistepScheduler,
-        ],
+        scheduler: DDIMScheduler
+        | PNDMScheduler
+        | LMSDiscreteScheduler
+        | EulerDiscreteScheduler
+        | EulerAncestralDiscreteScheduler
+        | DPMSolverMultistepScheduler,
         feature_extractor: CLIPImageProcessor,
     ):
         super().__init__()
@@ -224,9 +223,9 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         num_videos_per_prompt: int = 1,
         do_classifier_free_guidance: bool = False,
         negative_prompt=None,
-        prompt_embeds: Optional[torch.FloatTensor] = None,
-        negative_prompt_embeds: Optional[torch.FloatTensor] = None,
-        lora_scale: Optional[float] = None,
+        prompt_embeds: torch.FloatTensor | None = None,
+        negative_prompt_embeds: torch.FloatTensor | None = None,
+        lora_scale: float | None = None,
         clip_skip: int = 1,
     ):
         # set lora scale so that monkey patched LoRA
@@ -459,25 +458,25 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
 
     def __call__(
         self,
-        prompt: Optional[str] = None,
-        prompt_map: Optional[dict[int, str]] = None,
-        height: Optional[int] = None,
-        width: Optional[int] = None,
+        prompt: str | None = None,
+        prompt_map: dict[int, str] | None = None,
+        height: int | None = None,
+        width: int | None = None,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
-        negative_prompt: Optional[Union[str, list[str]]] = None,
+        negative_prompt: str | list[str] | None = None,
         video_length: int = ...,
-        num_videos_per_prompt: Optional[int] = 1,
+        num_videos_per_prompt: int | None = 1,
         eta: float = 0.0,
-        generator: Optional[Union[torch.Generator, list[torch.Generator]]] = None,
-        latents: Optional[torch.FloatTensor] = None,
-        prompt_embeds: Optional[torch.FloatTensor] = None,
-        negative_prompt_embeds: Optional[torch.FloatTensor] = None,
-        output_type: Optional[str] = "tensor",
+        generator: torch.Generator | list[torch.Generator] | None = None,
+        latents: torch.FloatTensor | None = None,
+        prompt_embeds: torch.FloatTensor | None = None,
+        negative_prompt_embeds: torch.FloatTensor | None = None,
+        output_type: str | None = "tensor",
         return_dict: bool = True,
-        callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
-        callback_steps: Optional[int] = 1,
-        cross_attention_kwargs: Optional[dict[str, Any]] = None,
+        callback: Callable[[int, int, torch.FloatTensor], None] | None = None,
+        callback_steps: int | None = 1,
+        cross_attention_kwargs: dict[str, Any] | None = None,
         context_frames: int = -1,
         context_stride: int = 3,
         context_overlap: int = 4,

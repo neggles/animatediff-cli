@@ -1,7 +1,7 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -42,7 +42,7 @@ def interpolate(
         ),
     ] = 8,
     out_fps: Annotated[
-        Optional[int],
+        int | None,
         typer.Option(
             "--out-fps", "-F", help="Target FPS (uses minterpolate, not recommended)", show_default=True
         ),
@@ -72,7 +72,7 @@ def interpolate(
         typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to source frames directory"),
     ] = ...,
     out_file: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Argument(
             dir_okay=False,
             help="Path to output file (default: frames_dir/rife-output.<out_type>)",
@@ -97,7 +97,7 @@ def interpolate(
     if out_file is None:
         out_file = frames_dir.parent.joinpath(f"{frames_dir.name}-rife.{file_extn}")
     elif out_file.suffix != file_extn:
-        logger.warn("Output file extension does not match codec, changing extension")
+        logger.warning("Output file extension does not match codec, changing extension")
         out_file = out_file.with_suffix(file_extn)
 
     # build RIFE command and get args
