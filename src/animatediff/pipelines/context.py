@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -15,9 +15,9 @@ def ordered_halving(val):
 # I have absolutely no idea how this works and I don't like that.
 def uniform(
     step: int = ...,
-    num_steps: Optional[int] = None,
+    num_steps: int | None = None,
     num_frames: int = ...,
-    context_size: Optional[int] = None,
+    context_size: int | None = None,
     context_stride: int = 3,
     context_overlap: int = 4,
     closed_loop: bool = True,
@@ -50,9 +50,9 @@ def get_context_scheduler(name: str) -> Callable:
 def get_total_steps(
     scheduler,
     timesteps: list[int],
-    num_steps: Optional[int] = None,
+    num_steps: int | None = None,
     num_frames: int = ...,
-    context_size: Optional[int] = None,
+    context_size: int | None = None,
     context_stride: int = 3,
     context_overlap: int = 4,
     closed_loop: bool = True,

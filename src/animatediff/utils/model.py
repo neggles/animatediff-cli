@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import torch
 from diffusers import StableDiffusionPipeline
@@ -59,7 +59,7 @@ def get_base_model(model_name_or_path: str, local_dir: Path, force: bool = False
 
 def checkpoint_to_pipeline(
     checkpoint: Path,
-    target_dir: Optional[Path] = None,
+    target_dir: Path | None = None,
     save: bool = True,
 ) -> StableDiffusionPipeline:
     logger.debug(f"Converting checkpoint {relative_path(checkpoint)}")
