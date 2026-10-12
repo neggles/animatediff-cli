@@ -1,6 +1,5 @@
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import ffmpeg
 from ffmpeg.nodes import FilterNode, InputNode
@@ -95,7 +94,7 @@ class FfmpegEncoder:
         self.lossless = lossless
         self.interpolate = interpolate
 
-        self.input: Optional[InputNode] = None
+        self.input: InputNode | None = None
 
     def encode(self) -> tuple:
         self.input: InputNode = ffmpeg.input(
