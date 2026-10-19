@@ -3,7 +3,7 @@ import logging
 from functools import lru_cache
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict
 
 from pydantic import BaseConfig, BaseSettings, Field, root_validator
 from pydantic.env_settings import (
@@ -27,7 +27,7 @@ class JsonSettingsSource:
 
     def __init__(
         self,
-        json_config_path: Optional[Union[PathLike, list[PathLike]]] = list(),
+        json_config_path: PathLike | list[PathLike] | None = list(),
     ) -> None:
         if isinstance(json_config_path, list):
             self.json_config_path = [Path(path) for path in json_config_path]
@@ -53,11 +53,11 @@ class JsonSettingsSource:
         return merged_config  # return the merged config
 
     def __repr__(self) -> str:
-        return f"JsonSettingsSource(json_config_path={repr(self.json_config_path)})"
+        return f"JsonSettingsSource(json_config_path={self.json_config_path!r})"
 
 
 class JsonConfig(BaseConfig):
-    json_config_path: Optional[Union[Path, list[Path]]] = None
+    json_config_path: Path | list[Path] | None = None
     env_file_encoding: str = "utf-8"
 
     @classmethod
@@ -66,7 +66,7 @@ class JsonConfig(BaseConfig):
         init_settings: InitSettingsSource,
         env_settings: EnvSettingsSource,
         file_secret_settings: SecretsSettingsSource,
-    ) -> Tuple[SettingsSourceCallable, ...]:
+    ) -> tuple[SettingsSourceCallable, ...]:
         # pull json_config_path from init_settings if passed, otherwise use the class var
         json_config_path = init_settings.init_kwargs.pop("json_config_path", cls.json_config_path)
 
@@ -98,7 +98,7 @@ def get_infer_config(
 
 class ModelConfig(BaseSettings):
     name: str = Field(...)  # Config name, not actually used for much of anything
-    base: Optional[Path] = Field(None)  # Path to base checkpoint (if using a LoRA)
+    base: Path | None = Field(None)  # Path to base checkpoint (if using a LoRA)
     path: Path = Field(...)  # Path to the model or LoRA checkpoint
     motion_module: Path = Field(...)  # Path to the motion module
     compile: bool = Field(False)  # whether to compile the model with TorchDynamo
