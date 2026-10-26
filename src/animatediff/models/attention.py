@@ -1,7 +1,7 @@
 # Adapted from https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/attention.py
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch
 from diffusers.configuration_utils import ConfigMixin, register_to_config
@@ -25,14 +25,14 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         self,
         num_attention_heads: int = 16,
         attention_head_dim: int = 88,
-        in_channels: Optional[int] = None,
+        in_channels: int | None = None,
         num_layers: int = 1,
         dropout: float = 0.0,
         norm_num_groups: int = 32,
-        cross_attention_dim: Optional[int] = None,
+        cross_attention_dim: int | None = None,
         attention_bias: bool = False,
         activation_fn: str = "geglu",
-        num_embeds_ada_norm: Optional[int] = None,
+        num_embeds_ada_norm: int | None = None,
         use_linear_projection: bool = False,
         only_cross_attention: bool = False,
         upcast_attention: bool = False,
@@ -86,11 +86,11 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
     def forward(
         self,
         hidden_states: torch.Tensor,
-        encoder_hidden_states: Optional[torch.Tensor] = None,
-        timestep: Optional[torch.LongTensor] = None,
-        cross_attention_kwargs: Dict[str, Any] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        encoder_attention_mask: Optional[torch.Tensor] = None,
+        encoder_hidden_states: torch.Tensor | None = None,
+        timestep: torch.LongTensor | None = None,
+        cross_attention_kwargs: dict[str, Any] = None,
+        attention_mask: torch.Tensor | None = None,
+        encoder_attention_mask: torch.Tensor | None = None,
         return_dict: bool = True,
     ) -> tuple[Tensor] | Transformer3DModelOutput:
         # validate input dim
@@ -180,9 +180,9 @@ class BasicTransformerBlock(nn.Module):
         num_attention_heads: int,
         attention_head_dim: int,
         dropout: float = 0.0,
-        cross_attention_dim: Optional[int] = None,
+        cross_attention_dim: int | None = None,
         activation_fn: str = "geglu",
-        num_embeds_ada_norm: Optional[int] = None,
+        num_embeds_ada_norm: int | None = None,
         attention_bias: bool = False,
         only_cross_attention: bool = False,
         upcast_attention: bool = False,
@@ -262,11 +262,11 @@ class BasicTransformerBlock(nn.Module):
     def forward(
         self,
         hidden_states: torch.FloatTensor,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        encoder_hidden_states: Optional[torch.FloatTensor] = None,
-        encoder_attention_mask: Optional[torch.FloatTensor] = None,
-        timestep: Optional[torch.LongTensor] = None,
-        cross_attention_kwargs: Dict[str, Any] = None,
+        attention_mask: torch.FloatTensor | None = None,
+        encoder_hidden_states: torch.FloatTensor | None = None,
+        encoder_attention_mask: torch.FloatTensor | None = None,
+        timestep: torch.LongTensor | None = None,
+        cross_attention_kwargs: dict[str, Any] = None,
         video_length=None,
     ):
         # SparseCausal-Attention
