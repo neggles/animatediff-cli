@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import torch
 import torch._dynamo as dynamo
@@ -39,8 +38,8 @@ def send_to_device(
     if compile:
         if not isinstance(pipeline.unet, dynamo.OptimizedModule):
             allow_ops_in_compiled_graph()  # make einops behave
-            logger.warn("Enabling model compilation with TorchDynamo, this may take a while...")
-            logger.warn("Model compilation is experimental and may not work as expected!")
+            logger.warning("Enabling model compilation with TorchDynamo, this may take a while...")
+            logger.warning("Model compilation is experimental and may not work as expected!")
             pipeline.unet = torch.compile(
                 pipeline.unet,
                 fullgraph=False,
@@ -55,9 +54,9 @@ def send_to_device(
 
 def get_context_params(
     length: int,
-    context: Optional[int] = None,
-    overlap: Optional[int] = None,
-    stride: Optional[int] = None,
+    context: int | None = None,
+    overlap: int | None = None,
+    stride: int | None = None,
 ):
     if context is None:
         context = min(length, 16)
