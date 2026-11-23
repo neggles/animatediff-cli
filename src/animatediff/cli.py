@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import torch
 import typer
@@ -57,8 +57,8 @@ except ImportError:
     rife_app = None
 
 # mildly cursed globals to allow for reuse of the pipeline if we're being called as a module
-pipeline: Optional[AnimationPipeline] = None
-last_model_path: Optional[Path] = None
+pipeline: AnimationPipeline | None = None
+last_model_path: Path | None = None
 
 
 def version_callback(value: bool):
@@ -125,7 +125,7 @@ def generate(
         ),
     ] = 16,
     context: Annotated[
-        Optional[int],
+        int | None,
         typer.Option(
             "--context",
             "-C",
@@ -137,7 +137,7 @@ def generate(
         ),
     ] = None,
     overlap: Annotated[
-        Optional[int],
+        int | None,
         typer.Option(
             "--overlap",
             "-O",
@@ -149,7 +149,7 @@ def generate(
         ),
     ] = None,
     stride: Annotated[
-        Optional[int],
+        int | None,
         typer.Option(
             "--stride",
             "-S",
@@ -229,7 +229,7 @@ def generate(
         ),
     ] = False,
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--version",
             "-v",
@@ -387,7 +387,7 @@ def convert(
         ),
     ] = ...,
     out_dir: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             "--out-dir",
             "-o",
@@ -417,7 +417,7 @@ def merge(
         ),
     ] = ...,
     out_dir: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             "--out-dir",
             "-o",

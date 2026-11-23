@@ -2,7 +2,6 @@ import logging
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union
 
 import torch
 from diffusers import AutoencoderKL, StableDiffusionPipeline
@@ -26,7 +25,7 @@ re_clean_prompt = re.compile(r"[^\w\-, ]")
 
 
 def create_pipeline(
-    base_model: Union[str, PathLike] = default_base_path,
+    base_model: str | PathLike = default_base_path,
     model_config: ModelConfig = ...,
     infer_config: InferenceConfig = ...,
     use_xformers: bool = True,
@@ -136,8 +135,8 @@ def create_pipeline(
 
 def run_inference(
     pipeline: AnimationPipeline,
-    prompt: Optional[str] = None,
-    prompt_map: Optional[dict[int, str]] = None,
+    prompt: str | None = None,
+    prompt_map: dict[int, str] | None = None,
     n_prompt: str = ...,
     seed: int = -1,
     steps: int = 25,
@@ -186,7 +185,7 @@ def run_inference(
     # Trim and clean up the prompt for filename use
     prompt_str = prompt or next(iter(prompt_map.values()))
     prompt_tags = [re_clean_prompt.sub("", tag).strip().replace(" ", "-") for tag in prompt_str.split(",")]
-    prompt_str = "_".join((prompt_tags[:6]))
+    prompt_str = "_".join(prompt_tags[:6])
 
     # generate the output filename and save the video
     out_str = f"{idx:02d}_{seed}_{prompt_str}"[:250]
