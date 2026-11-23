@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -10,12 +9,10 @@ logger = logging.getLogger(__name__)
 class RifeNCNNOptions(BaseModel):
     model_path: Path = Field(..., description="Path to RIFE model directory")
     input_path: Path = Field(..., description="Path to source frames directory")
-    output_path: Optional[Path] = Field(None, description="Path to output frames directory")
-    num_frame: Optional[int] = Field(None, description="Number of frames to generate (default N*2)")
+    output_path: Path | None = Field(None, description="Path to output frames directory")
+    num_frame: int | None = Field(None, description="Number of frames to generate (default N*2)")
     time_step: float = Field(0.5, description="Time step for interpolation (default 0.5)", gt=0.0, le=1.0)
-    gpu_id: Optional[int | list[int]] = Field(
-        None, description="GPU ID(s) to use (default: auto, -1 for CPU)"
-    )
+    gpu_id: int | list[int] | None = Field(None, description="GPU ID(s) to use (default: auto, -1 for CPU)")
     load_threads: int = Field(1, description="Number of threads for frame loading", gt=0)
     process_threads: int = Field(2, description="Number of threads used for frame processing", gt=0)
     save_threads: int = Field(2, description="Number of threads for frame saving", gt=0)

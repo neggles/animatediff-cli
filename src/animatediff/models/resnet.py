@@ -1,6 +1,5 @@
 # Adapted from https://github.com/huggingface/diffusers/blob/main/src/diffusers/models/resnet.py
 
-from typing import Optional
 
 import torch
 import torch.nn.functional as F
@@ -24,7 +23,7 @@ class Upsample3D(nn.Module):
         channels: int,
         use_conv: bool = False,
         use_conv_transpose: bool = False,
-        out_channels: Optional[int] = None,
+        out_channels: int | None = None,
         name="conv",
     ):
         super().__init__()
@@ -75,7 +74,7 @@ class Downsample3D(nn.Module):
         self,
         channels: int,
         use_conv: bool = False,
-        out_channels: Optional[int] = None,
+        out_channels: int | None = None,
         padding: int = 1,
         name="conv",
     ):
